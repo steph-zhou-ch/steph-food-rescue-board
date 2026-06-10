@@ -115,3 +115,53 @@ describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-02-required-field-indicat
     }
   });
 });
+
+describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-03-character-count-live', () => {
+  it('updates the title counter live as the user types', () => {
+    render(e(PostItem));
+    const title = screen.getByTestId('field-title');
+    const input = within(title).getByLabelText(/title/i) as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: 'Hello' } });
+    expect(within(title).getByTestId('counter-title')).toHaveTextContent('5/100');
+
+    fireEvent.change(input, { target: { value: 'Hello world' } });
+    expect(within(title).getByTestId('counter-title')).toHaveTextContent('11/100');
+  });
+
+  it('updates the description counter live as the user types', () => {
+    render(e(PostItem));
+    const description = screen.getByTestId('field-description');
+    const input = within(description).getByLabelText(/description/i) as HTMLTextAreaElement;
+
+    fireEvent.change(input, { target: { value: 'Twelve bagels' } });
+    expect(within(description).getByTestId('counter-description')).toHaveTextContent('13/500');
+  });
+
+  it('prevents typing past the 100-char title limit and turns the counter red', () => {
+    render(e(PostItem));
+    const title = screen.getByTestId('field-title');
+    const input = within(title).getByLabelText(/title/i) as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: 'a'.repeat(150) } });
+
+    // Value clamped at the limit — not the 150 chars the user attempted.
+    expect(input.value).toHaveLength(100);
+    const counter = within(title).getByTestId('counter-title');
+    expect(counter).toHaveTextContent('100/100');
+    expect(counter).toHaveStyle({ color: 'rgb(181, 41, 43)' });
+  });
+
+  it('prevents typing past the 500-char description limit and turns the counter red', () => {
+    render(e(PostItem));
+    const description = screen.getByTestId('field-description');
+    const input = within(description).getByLabelText(/description/i) as HTMLTextAreaElement;
+
+    fireEvent.change(input, { target: { value: 'b'.repeat(600) } });
+
+    expect(input.value).toHaveLength(500);
+    const counter = within(description).getByTestId('counter-description');
+    expect(counter).toHaveTextContent('500/500');
+    expect(counter).toHaveStyle({ color: 'rgb(181, 41, 43)' });
+  });
+});
