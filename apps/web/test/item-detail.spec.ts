@@ -324,3 +324,25 @@ describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-04-pickup-and-unclaim
     );
   });
 });
+
+describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-05-back-navigation', () => {
+  it('renders a circular back button in the top-left that navigates to the feed', () => {
+    const onBack = vi.fn();
+    render(e(ItemDetail, { item: AVAILABLE_ITEM, onBack }));
+
+    const back = screen.getByTestId('btn-back');
+    expect(back).toBeInTheDocument();
+    // Circular pill button, anchored top-left.
+    expect(back).toHaveStyle({
+      position: 'absolute',
+      top: '16px',
+      left: '16px',
+      borderRadius: '9999px',
+    });
+    // Back arrow icon present.
+    expect(within(back).getByTestId('icon-arrow-left')).toBeInTheDocument();
+
+    fireEvent.click(back);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+});
