@@ -3,7 +3,7 @@
 // Full-page form for creating a surplus item. Renders, in design order:
 // photo upload (optional), title, description, category, pickup location,
 // expiry (optional), and poster name. Submits to POST /api/items.
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { CharacterCounter } from '../components/CharacterCounter';
 import { CategoryPicker, type Category } from '../components/CategoryPicker';
 import { PhotoUpload } from '../components/PhotoUpload';
@@ -11,10 +11,24 @@ import { PhotoUpload } from '../components/PhotoUpload';
 const TITLE_MAX = 100;
 const DESCRIPTION_MAX = 500;
 
+// The browse feed lives at the app root.
+const FEED_PATH = '/';
+
 export interface PostItemProps {
   // Navigation hook (defaults to history-based nav). Tests inject a spy.
   onNavigate?: (path: string) => void;
 }
+
+function defaultNavigate(path: string) {
+  window.location.assign(path);
+}
+
+const REQUIRED_LABELS: Record<string, string> = {
+  title: 'Title',
+  description: 'Description',
+  pickupLocation: 'Pickup Location',
+  postedBy: 'Your Name / Organization',
+};
 
 interface FieldProps {
   name: string;
@@ -101,24 +115,82 @@ const submitStyle: CSSProperties = {
   cursor: 'pointer',
 };
 
-export function PostItem(_props: PostItemProps) {
+export function PostItem({ onNavigate = defaultNavigate }: PostItemProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('food');
   const [pickupLocation, setPickupLocation] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [postedBy, setPostedBy] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<readonly string[]>([]);
+
+  async function handleSubmit(ev: FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    if (submitting) return; // guard against double-submit
+
+    // Client-side required-field validation (category always has a value).
+    const values: Record<string, string> = {
+      title: title.trim(),
+      description: description.trim(),
+      pickupLocation: pickupLocation.trim(),
+      postedBy: postedBy.trim(),
+    };
+    const missing = Object.keys(REQUIRED_LABELS)
+      .filter((key) => values[key].length === 0)
+      .map((key) => REQUIRED_LABELS[key]);
+    if (missing.length > 0) {
+      setErrors(missing);
+      return;
+    }
+    setErrors([]);
+
+    const payload = {
+      title: title.trim(),
+      description: description.trim(),
+      category,
+      pickupLocation: pickupLocation.trim(),
+      postedBy: postedBy.trim(),
+      // `expiresAt` is the raw datetime-local value (ISO-8601-shaped,
+      // e.g. "2026-06-10T14:30"); the API normalizes the timezone. No clock
+      // construction happens client-side; timezone handling lives server-side.
+      ...(expiresAt ? { expiresAt } : {}),
+    };
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (response.status === 201) {
+        onNavigate(FEED_PATH);
+        return;
+      }
+      setErrors(['Something went wrong. Please try again.']);
+    } catch {
+      setErrors(['Network error. Please try again.']);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <main style={pageStyle}>
       <header style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <button type="button" aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}>
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => onNavigate(FEED_PATH)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+        >
           ←
         </button>
         <h1 style={{ fontFamily: 'Geist, sans-serif', fontSize: '20px', margin: 0 }}>Post an Item</h1>
       </header>
 
-      <form>
+      <form onSubmit={handleSubmit}>
         <Field name="photo">
           <span style={labelStyle}>
             Photo <span style={optionalStyle}>(optional)</span>
@@ -213,7 +285,25 @@ export function PostItem(_props: PostItemProps) {
           />
         </Field>
 
-        <button type="submit" style={submitStyle}>
+        {errors.length > 0 && (
+          <div
+            role="alert"
+            style={{
+              color: '#b5292b',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              marginBottom: '12px',
+            }}
+          >
+            Please fill in: {errors.join(', ')}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{ ...submitStyle, opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}
+        >
           Post Item
         </button>
       </form>
