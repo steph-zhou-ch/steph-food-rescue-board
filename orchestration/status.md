@@ -1,14 +1,14 @@
 # Engagement status board
 
-> Last update: `2026-06-10T18:50:00Z` by `Captain`
-> Phase: `4` · Wave: `1` · Batch: `1–3`
-> Current state: `handoff bundle staged`
+> Last update: `2026-06-10T19:20:00Z` by `manager`
+> Phase: `4` · Wave: `1` · Batch: `1`
+> Current state: `batch-1 dispatched — w1-api-items running`
 
 ## Active tracks
 
 | Track id | Agent class | Branch | Status | Predecessors | Notes |
 |---|---|---|---|---|---|
-| `w1-api-items` | `application-services-agent` | `swarm/w1-api-items` | `pending` | — | Batch 1. Backend items REST API + domain entity + in-memory store. |
+| `w1-api-items` | `application-services-agent` | `swarm/w1-api-items` | `running` | — | Batch 1. Spawned + dispatched 2026-06-10T19:19Z. Backend items REST API + domain entity + in-memory store. |
 | `w1-fe-browse-feed` | `foundations-agent` | `swarm/w1-fe-browse-feed` | `pending` | `w1-api-items` | Batch 2. Browse feed page. |
 | `w1-fe-item-detail` | `foundations-agent` | `swarm/w1-fe-item-detail` | `pending` | `w1-api-items` | Batch 2. Item detail + status actions. |
 | `w1-fe-post-form` | `foundations-agent` | `swarm/w1-fe-post-form` | `pending` | `w1-api-items` | Batch 2. Post-item form. |
@@ -42,4 +42,7 @@
 
 ## Recent activity (manager-authored; newest first)
 
+- `2026-06-10T19:19:30Z` — Dispatched w1-api-items: pointer-message sent (read composed prompt, checkout swarm/w1-api-items, push every TDD pair). Worker acknowledged and began reading brief — dispatch confirmed behaviorally. (manager)
+- `2026-06-10T19:19:10Z` — Spawned w1-api-items (application-services-agent, --harness claude, branch swarm/w1-api-items). Template uploaded to Hub (project scope, id b99b4f1c…) via --upload-template after discovering grove templates were not pre-imported. Trust dialog dismissed via --raw \r. (manager)
+- `2026-06-10T19:17:42Z` — Pushed [manager-ready] wave-1 marker to origin/main (f666cf0). Workspace populated as linked worktree on main. (manager)
 - `2026-06-10T18:50:00Z` — Phase 4 handoff bundle staged: 6 track-metas + 6 composed prompts validated, G.wave-1 gate added, kickoff brief authored (Captain)
