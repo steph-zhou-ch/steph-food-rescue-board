@@ -244,3 +244,83 @@ describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-03-claim-action', () 
     );
   });
 });
+
+describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-04-pickup-and-unclaim-actions', () => {
+  it('"Mark as picked up" sends PATCH action=confirm_pickup and navigates to feed on success', async () => {
+    const { fetchMock, resolve } = deferredFetch({
+      id: 'item-1',
+      status: 'picked_up',
+      claimedBy: 'Hope Shelter',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const onBack = vi.fn();
+
+    render(e(ItemDetail, { item: CLAIMED_ITEM, onBack }));
+    fireEvent.click(screen.getByTestId('btn-pickup'));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/items/item-1/status');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      action: 'confirm_pickup',
+    });
+
+    resolve();
+    // On success the item leaves the feed → navigate back to browse.
+    await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1));
+  });
+
+  it('"Unclaim" sends PATCH action=unclaim and flips the view back to available', async () => {
+    const { fetchMock, resolve } = deferredFetch({
+      id: 'item-1',
+      status: 'available',
+      claimedBy: null,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const onBack = vi.fn();
+
+    render(e(ItemDetail, { item: CLAIMED_ITEM, onBack }));
+    fireEvent.click(screen.getByTestId('btn-unclaim'));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/items/item-1/status');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body as string)).toMatchObject({ action: 'unclaim' });
+
+    resolve();
+    // View returns to the available state in place (green badge, claim
+    // button back, claimed-by row gone). No navigation away.
+    await waitFor(() =>
+      expect(screen.getByTestId('status-badge')).toHaveTextContent('AVAILABLE'),
+    );
+    expect(screen.getByTestId('btn-claim')).toBeInTheDocument();
+    expect(screen.queryByTestId('detail-row-claimedBy')).not.toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
+  it('disables both claimed-state buttons while a request is in flight (no simultaneous actions)', async () => {
+    const { fetchMock, resolve } = deferredFetch({
+      id: 'item-1',
+      status: 'available',
+      claimedBy: null,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(e(ItemDetail, { item: CLAIMED_ITEM }));
+    const pickup = screen.getByTestId('btn-pickup');
+    const unclaim = screen.getByTestId('btn-unclaim');
+    fireEvent.click(unclaim);
+
+    await waitFor(() => {
+      expect(pickup).toBeDisabled();
+      expect(unclaim).toBeDisabled();
+    });
+
+    resolve();
+    await waitFor(() =>
+      expect(screen.getByTestId('status-badge')).toHaveTextContent('AVAILABLE'),
+    );
+  });
+});
