@@ -90,3 +90,28 @@ describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-01-renders-all-fields @de
     expect(screen.getByRole('button', { name: 'Post Item' })).toBeInTheDocument();
   });
 });
+
+describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-02-required-field-indicators', () => {
+  const REQUIRED_FIELDS = ['title', 'description', 'category', 'pickupLocation', 'postedBy'];
+  const OPTIONAL_FIELDS = ['photo', 'expiresAt'];
+
+  it('shows a red asterisk on every required field label', () => {
+    render(e(PostItem));
+    for (const name of REQUIRED_FIELDS) {
+      const field = screen.getByTestId(`field-${name}`);
+      const marker = within(field).getByTestId('required-marker');
+      expect(marker).toHaveTextContent('*');
+      // Red, per the text-danger design token (#b5292b).
+      expect(marker).toHaveStyle({ color: 'rgb(181, 41, 43)' });
+    }
+  });
+
+  it('shows "(optional)" and NO asterisk on optional field labels', () => {
+    render(e(PostItem));
+    for (const name of OPTIONAL_FIELDS) {
+      const field = screen.getByTestId(`field-${name}`);
+      expect(within(field).queryByTestId('required-marker')).toBeNull();
+      expect(within(field).getByText(/\(optional\)/i)).toBeInTheDocument();
+    }
+  });
+});
