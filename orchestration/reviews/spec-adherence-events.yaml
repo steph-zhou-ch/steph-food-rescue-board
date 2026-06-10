@@ -1,0 +1,24 @@
+# Spec-adherence audit event log — append-only.
+#
+# One row per audit cycle. The manager reads the tail of this file to
+# track which audited tracks have a verdict and the running finding
+# counts. Never rewrite prior rows; only append.
+
+events:
+  - cycle: 1
+    timestamp: "2026-06-10T19:52:34Z"
+    audit_track: w1-audit-api
+    audited_track: w1-api-items
+    audited_ref: 76ccf82
+    wave: w1
+    batch: 3
+    verdict: approved
+    criteria_reviewed: 19
+    criteria_passing: 19
+    findings:
+      critical: 0
+      high: 0
+      medium: 0
+      sham_assertions: 0
+    non_blocking_observations: 2
+    verdict_file: orchestration/reviews/w1-audit-api.md
