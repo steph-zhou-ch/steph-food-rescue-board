@@ -346,3 +346,46 @@ describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-05-back-navigation', 
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-06-detail-card-layout', () => {
+  it('renders a bordered, rounded container with a 14px gap between rows', () => {
+    render(e(ItemDetail, { item: AVAILABLE_ITEM }));
+    const card = screen.getByTestId('detail-card');
+    expect(card).toHaveStyle({
+      border: '1px solid #dfdbd2',
+      borderRadius: '16px',
+      gap: '14px',
+    });
+  });
+
+  it('renders each row with a 16px icon, a 12px muted label and a 14px medium-weight value', () => {
+    render(e(ItemDetail, { item: AVAILABLE_ITEM }));
+    const card = screen.getByTestId('detail-card');
+
+    for (const key of ['pickupLocation', 'postedBy', 'postedTime', 'expiresAt']) {
+      const icon = within(card).getByTestId(`detail-icon-${key}`);
+      // The leading glyph is a 16px SVG.
+      const svg = icon.querySelector('svg');
+      expect(svg).not.toBeNull();
+      expect(svg).toHaveAttribute('width', '16');
+      expect(svg).toHaveAttribute('height', '16');
+
+      const label = within(card).getByTestId(`detail-label-${key}`);
+      expect(label).toHaveStyle({ fontSize: '12px', color: '#6d675e' });
+
+      const value = within(card).getByTestId(`detail-value-${key}`);
+      expect(value).toHaveStyle({ fontSize: '14px', fontWeight: '500' });
+    }
+  });
+
+  it('does NOT render any row without its corresponding icon (negative case)', () => {
+    render(e(ItemDetail, { item: AVAILABLE_ITEM }));
+    const card = screen.getByTestId('detail-card');
+    const rows = within(card).getAllByTestId(/^detail-row-/);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      const key = row.getAttribute('data-testid')!.replace('detail-row-', '');
+      expect(within(row).getByTestId(`detail-icon-${key}`)).toBeInTheDocument();
+    }
+  });
+});
