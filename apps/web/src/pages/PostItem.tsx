@@ -137,7 +137,8 @@ export function PostItem(_props: PostItemProps) {
           <input
             id="title"
             value={title}
-            onChange={(ev) => setTitle(ev.target.value)}
+            maxLength={TITLE_MAX}
+            onChange={(ev) => setTitle(ev.target.value.slice(0, TITLE_MAX))}
             style={inputStyle}
           />
         </Field>
@@ -157,7 +158,8 @@ export function PostItem(_props: PostItemProps) {
           <textarea
             id="description"
             value={description}
-            onChange={(ev) => setDescription(ev.target.value)}
+            maxLength={DESCRIPTION_MAX}
+            onChange={(ev) => setDescription(ev.target.value.slice(0, DESCRIPTION_MAX))}
             rows={4}
             style={inputStyle}
           />
