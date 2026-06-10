@@ -257,3 +257,18 @@ describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-04-submits-and-navigates'
     await vi.waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/'));
   });
 });
+
+describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-05-back-navigation', () => {
+  it('navigates to the feed when the back arrow is clicked, without submitting', () => {
+    const onNavigate = vi.fn();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(e(PostItem, { onNavigate }));
+    fireEvent.click(screen.getByRole('button', { name: /back/i }));
+
+    expect(onNavigate).toHaveBeenCalledWith('/');
+    // Back navigation must NOT POST the form.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
