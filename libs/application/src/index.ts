@@ -5,3 +5,6 @@
 //   - Each use case implements an inbound port from libs/domain
 //   - Outbound ports are injected (interfaces from libs/domain)
 //   - No framework imports here (NestJS DI is composed at apps/app)
+
+export { ItemStore, ItemNotFoundError } from './item-store.js';
+export type { ListFilters } from './item-store.js';
