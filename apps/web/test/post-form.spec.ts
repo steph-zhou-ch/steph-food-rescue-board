@@ -165,3 +165,95 @@ describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-03-character-count-live',
     expect(counter).toHaveStyle({ color: 'rgb(181, 41, 43)' });
   });
 });
+
+describe('@req REQ-CAP-FE-POST-FORM @criterion fe-post-04-submits-and-navigates', () => {
+  function fillRequired() {
+    fireEvent.change(within(screen.getByTestId('field-title')).getByLabelText(/title/i), {
+      target: { value: '12 bagels' },
+    });
+    fireEvent.change(
+      within(screen.getByTestId('field-description')).getByLabelText(/description/i),
+      { target: { value: 'Fresh this morning' } },
+    );
+    fireEvent.change(
+      within(screen.getByTestId('field-pickupLocation')).getByLabelText(/pickup location/i),
+      { target: { value: '5th & Main' } },
+    );
+    fireEvent.change(within(screen.getByTestId('field-postedBy')).getByLabelText(/your name/i), {
+      target: { value: 'Corner Cafe' },
+    });
+  }
+
+  it('POSTs to /api/items and navigates to the feed on 201', async () => {
+    const onNavigate = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 201,
+      ok: true,
+      json: async () => ({ id: 'uuid-1', status: 'available', createdAt: '2026-06-10T00:00:00Z' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(e(PostItem, { onNavigate }));
+    fillRequired();
+    fireEvent.click(screen.getByRole('button', { name: 'Post Item' }));
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/items');
+    expect(init.method).toBe('POST');
+    const body = JSON.parse(init.body as string);
+    expect(body).toMatchObject({
+      title: '12 bagels',
+      description: 'Fresh this morning',
+      category: 'food',
+      pickupLocation: '5th & Main',
+      postedBy: 'Corner Cafe',
+    });
+
+    await vi.waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/'));
+  });
+
+  it('does NOT submit when required fields are empty and shows validation', () => {
+    const onNavigate = vi.fn();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(e(PostItem, { onNavigate }));
+    fireEvent.click(screen.getByRole('button', { name: 'Post Item' }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('disables the submit button while the request is in flight (no double submit)', async () => {
+    const onNavigate = vi.fn();
+    let resolveFetch: (value: unknown) => void = () => {};
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(e(PostItem, { onNavigate }));
+    fillRequired();
+    const button = screen.getByRole('button', { name: 'Post Item' });
+    fireEvent.click(button);
+
+    await vi.waitFor(() => expect(button).toBeDisabled());
+
+    // A second click while in flight must not fire another request.
+    fireEvent.click(button);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    resolveFetch({
+      status: 201,
+      ok: true,
+      json: async () => ({ id: 'uuid-2', status: 'available', createdAt: '2026-06-10T00:00:00Z' }),
+    });
+    await vi.waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/'));
+  });
+});
