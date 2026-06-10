@@ -9,6 +9,25 @@
       "commands": [
         "pnpm --filter @charliehealth/design-sync check"
       ]
+    },
+    {
+      "id": "G.wave-1",
+      "description": "Wave 1 close-out gate: catalog + track-meta + typecheck + full test suite + design-sync must all pass on the staging branch before merge to trunk. Eligible once all six Wave-1 tracks report [complete:<id>].",
+      "requires": [
+        "w1-api-items",
+        "w1-fe-browse-feed",
+        "w1-fe-item-detail",
+        "w1-fe-post-form",
+        "w1-audit-api",
+        "w1-audit-fe"
+      ],
+      "commands": [
+        "pnpm req-lint",
+        "pnpm check-track-meta-paths",
+        "pnpm typecheck",
+        "pnpm test",
+        "pnpm --filter @charliehealth/design-sync check"
+      ]
     }
   ],
   "future_gates": []
