@@ -1,0 +1,57 @@
+track_id: "w1-api-items"
+
+agent_class: "application-services-agent"
+
+phase: 4
+wave: 1
+batch: 1
+
+track_summary: |
+  Implement the full REST API for surplus items: POST (create), GET
+  (list with category filter), PATCH (claim/unclaim/confirm-pickup),
+  and DELETE (soft-remove). Uses an in-memory data store — no database
+  required. Includes the SurplusItem domain entity, status state machine,
+  and all acceptance criteria from the API REQs.
+
+predecessors: []
+
+subscribed_contracts: []
+
+cross_cutting_packs: []
+
+unblocks:
+  - "G.typecheck"
+  - "G.test"
+
+deliverables:
+  - "libs/domain/src/surplus-item.ts"
+  - "libs/domain/src/item-status.ts"
+  - "libs/domain/src/index.ts"
+  - "libs/domain/test/surplus-item.spec.ts"
+  - "libs/application/src/item-store.ts"
+  - "libs/application/src/index.ts"
+  - "apps/api/src/items/items.controller.ts"
+  - "apps/api/src/items/items.module.ts"
+  - "apps/api/src/items/items.service.ts"
+  - "apps/api/src/items/dto/create-item.dto.ts"
+  - "apps/api/src/items/dto/update-status.dto.ts"
+  - "apps/api/src/app.module.ts"
+  - "apps/api/test/items.spec.ts"
+
+exit_criterion: |
+  All 4 API endpoints respond correctly, the status state machine rejects
+  illegal transitions with 409, req-lint + typecheck + vitest all pass,
+  and every critical/high criterion from REQ-CAP-POST-ITEM,
+  REQ-CAP-BROWSE-FEED, REQ-CAP-CLAIM-ITEM, REQ-CAP-REMOVE-LISTING, and
+  REQ-INV-ITEM-LIFECYCLE has a tagged test.
+
+source_of_truth:
+  req_ids:
+    - "REQ-CAP-POST-ITEM"
+    - "REQ-CAP-BROWSE-FEED"
+    - "REQ-CAP-GET-ITEM"
+    - "REQ-CAP-CLAIM-ITEM"
+    - "REQ-CAP-REMOVE-LISTING"
+    - "REQ-INV-ITEM-LIFECYCLE"
+
+execution_mode: hub_mode

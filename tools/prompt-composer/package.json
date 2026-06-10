@@ -1,0 +1,25 @@
+{
+  "name": "@charliehealth/prompt-composer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Compose worker-ready prompts from track-meta YAML + base rule-pack + agent-class authority + inlined REQ excerpts + operational protocol. Output is what the Scion manager pipes to each worker container via `scion message`.",
+  "type": "module",
+  "bin": {
+    "compose-prompts": "./src/compose.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --dir test/integration --passWithNoTests"
+  },
+  "dependencies": {
+    "yaml": "2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "typescript": "5.5.3",
+    "vitest": "2.1.4"
+  }
+}

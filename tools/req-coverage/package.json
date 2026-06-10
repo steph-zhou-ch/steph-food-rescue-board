@@ -1,0 +1,25 @@
+{
+  "name": "@charliehealth/req-coverage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Test-coverage validator for the REQ catalog. Asserts every critical/high acceptance criterion has at least one `describe('@req <REQ-ID> @criterion <criterion-id>', …)`-tagged vitest test under apps/ + libs/.",
+  "type": "module",
+  "bin": {
+    "req-coverage": "./src/coverage.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --dir test/integration --passWithNoTests"
+  },
+  "dependencies": {
+    "yaml": "2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "typescript": "5.5.3",
+    "vitest": "2.1.4"
+  }
+}

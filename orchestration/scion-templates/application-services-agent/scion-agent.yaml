@@ -1,0 +1,12 @@
+# Scion agent template — application-services-agent
+#
+# Spawns a broad-scope TypeScript worker that orchestrates domain
+# entities, persistence repositories, integration adapters, and API
+# resolvers into a coherent capability. Used for `app-*` capability
+# tracks that span multiple monorepo packages (e.g. app-book-appointment
+# touching domain + persistence + api + integrations).
+
+schema_version: "1"
+description: "Use-case orchestration worker — assembles domain + persistence + integrations + api into a coherent capability slice."
+agent_instructions: agents.md
+system_prompt: system-prompt.md

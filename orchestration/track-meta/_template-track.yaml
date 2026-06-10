@@ -1,0 +1,104 @@
+# orchestration/track-meta/_template-track.yaml
+#
+# Template for a single track-meta YAML file. Copy this to
+# orchestration/track-meta/<track-id>.yaml at Phase 4 (wave planning)
+# and replace every `TODO-…` placeholder. See docs/USER-GUIDE.md §Phase 4 —
+# "Track-meta authoring" for the field-by-field walkthrough.
+#
+# Linted by:
+#   - tools/prompt-composer (validates required fields, agent_class
+#     resolves in registry, REQ paths resolve, deliverables are
+#     non-empty)
+#   - tools/check-track-meta-paths (validates deliverables fall under
+#     apps/ / libs/ / migrations/ / tools/ / orchestration/)
+#
+# This template is intentionally close-to-valid YAML so that
+# `pnpm validate-prompt-composition --track-meta _template-track.yaml`
+# fails with semantic errors (e.g., "deliverable does not exist")
+# rather than YAML parse errors. Replace each TODO-… value with a real
+# one before validating your copy.
+
+# The track id — also used as the git branch (`swarm/<track-id>`) and
+# the done marker (`[complete:<track-id>]`). Follows the naming
+# convention in docs/USER-GUIDE.md Appendix D + docs/typescript-swarm-playbook.md
+# §"Track naming (this engagement)". kebab-case; wave prefix `w<N>-`.
+track_id: "TODO-w0-type-body"
+
+# Which agent class executes this track. MUST appear as an `id:` under
+# orchestration/ledgers/agent-class-registry.yaml — the composer fails
+# fast on unregistered classes. Determines allowed_paths,
+# forbidden_patterns, and which Scion template gets provisioned.
+# Allowed values:
+#   typescript-domain-agent | typescript-api-agent
+#   application-services-agent | foundations-agent
+#   spec-adherence-agent | code-review-codex
+agent_class: "TODO-pick-one-from-registry"
+
+# Methodology phase this track belongs to. Phase 4 (wave-planning) is
+# the usual author phase; the value here is the operating phase
+# (typically the same as the Phase that introduced the wave).
+phase: 4
+
+# Wave number. Used in track-id prefix and gate names.
+wave: 0
+
+# Batch number within the wave. Most waves run as a single batch (1).
+# Multi-batch waves are used when a single batch would exceed the
+# `max_parallel_tracks` cap or when work has serial dependencies that
+# don't fit a single DAG layer.
+batch: 1
+
+# 2-4 sentences in product-readable language. What this track delivers,
+# why it exists, what it does NOT cover. The composer inlines this
+# verbatim into the worker's mission block.
+track_summary: |
+  TODO write 2-4 sentences describing what this track delivers,
+  anchored in capabilities/invariants the worker should think about.
+  Avoid implementation jargon — that belongs in the REQs.
+
+# Other track-ids that must complete before this one is ready to spawn.
+# Empty list means "ready immediately". The manager's DAG computation
+# in manager-kickoff Step 3 reads this field.
+predecessors: []
+
+# Versioned contract artifacts the track depends on. Comma-separated
+# list of contract-* track-ids the wave plan has already locked.
+subscribed_contracts: []
+
+# Engagement-side rule packs (above the worker's template system-prompt)
+# that the composer should concatenate into the composed prompt. Leave
+# empty to use the agent_class's default (base.md for impl workers;
+# code-review-rule-pack.md for code-review-codex).
+cross_cutting_packs: []
+
+# Gate ids unlocked by this track completing successfully. The manager
+# only runs gates whose `requires:` set is fully satisfied. Gate ids
+# come from orchestration/gates/gates.json.
+unblocks: []
+
+# Files (relative paths from repo root) the worker will create or
+# modify. Used by check-track-meta-paths to verify the track stays
+# within agent-class scope, and by spec-adherence to scope its review.
+# Be specific — globs are allowed but discouraged.
+deliverables:
+  - "TODO-libs/<your-package>/src/<file>.ts"
+  - "TODO-libs/<your-package>/test/<file>.spec.ts"
+
+# What "complete" looks like, in 1-2 sentences. The worker stops when
+# this is true; the manager checks it before merging.
+exit_criterion: |
+  TODO write a one-or-two-sentence description of the observable end
+  state, including the gate(s) it satisfies.
+
+# REQs this track delivers. Each id MUST exist as a REQ-*.md file under
+# requirements/. The composer inlines the relevant Product Contract /
+# Technical Contract / Acceptance Criteria sections into the worker's
+# prompt verbatim.
+source_of_truth:
+  req_ids:
+    - "TODO-REQ-CAT-NAME"
+
+# Always `hub_mode` for this engagement (manager runs in Hub mode and
+# spawns workers via Scion Hub). The field exists so future
+# engagements can opt into headless / local-only modes per Appendix B.
+execution_mode: hub_mode

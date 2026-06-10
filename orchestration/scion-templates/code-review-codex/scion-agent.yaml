@@ -1,0 +1,34 @@
+# Scion agent template — code-review-codex
+#
+# Purpose: spawn a cross-model code-review auditor running on the Codex
+# CLI (GPT-5.5 via ChatGPT-OAuth tokens) to review code produced by
+# Claude-harness impl workers. This is the prevention mechanism for
+# docs/SWARM-QUALITY-FRAMEWORK.md Category G — Same-model blind spots.
+#
+# Auth model: ChatGPT OAuth (NOT api-key). The Captain's local Codex
+# CLI authenticates via ChatGPT login; the OAuth tokens live in
+# ~/.codex/auth.json and the model selection lives in ~/.codex/config.toml.
+# Both files are projected into the agent's container via Scion
+# file-type hub secrets:
+#   CODEX_AUTH    → /home/scion/.codex/auth.json
+#   CODEX_CONFIG  → /home/scion/.codex/config.toml
+#
+# Captain runs the secret setup ONCE per machine (see
+# docs/typescript-swarm-playbook.md § "Codex review setup"):
+#   scion hub secret set CODEX_AUTH @~/.codex/auth.json \
+#       --type file --target /home/scion/.codex/auth.json \
+#       --scope user --allow-progeny
+#   scion hub secret set CODEX_CONFIG @~/.codex/config.toml \
+#       --type file --target /home/scion/.codex/config.toml \
+#       --scope user --allow-progeny
+#
+# Once propagated, every code-review-codex agent the manager spawns gets
+# the tokens + config injected at container boot and the in-container
+# `codex` CLI authenticates as the Captain's ChatGPT account using model
+# `gpt-5.5` with `model_reasoning_effort = xhigh` (configured by
+# config.toml).
+
+schema_version: "1"
+description: "Cross-model code-review auditor on Codex (gpt-5.5). Read-only; verdicts to orchestration/reviews/."
+agent_instructions: agents.md
+system_prompt: system-prompt.md

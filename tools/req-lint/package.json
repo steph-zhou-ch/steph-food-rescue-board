@@ -1,0 +1,25 @@
+{
+  "name": "@charliehealth/req-lint",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Catalog validator for REQ Spec v3 requirements. Asserts frontmatter shape, id-matches-filename, schema_version=3, owners triad, invariants_respected references resolve, and embedded YAML criterion blocks parse.",
+  "type": "module",
+  "bin": {
+    "req-lint": "./src/lint.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --dir test/integration --passWithNoTests"
+  },
+  "dependencies": {
+    "yaml": "2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "typescript": "5.5.3",
+    "vitest": "2.1.4"
+  }
+}

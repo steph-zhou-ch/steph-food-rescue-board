@@ -1,0 +1,45 @@
+# Stub ledger — allowed mocks, fakes, or TODOs in the codebase.
+#
+# Every entry must declare:
+#   path         File the stub lives in (relative to repo root)
+#   type         "todo" | "mock" | "fake" | "placeholder"
+#   owner        Slack handle / owner alias (the human accountable)
+#   expiry_wave  Wave number after which this stub MUST be replaced
+#                (the meta-gate audit fails the wave gate-check if a
+#                stub past its expiry is still present)
+#   reason       1-line justification — why the stub exists today
+#
+# Empty by default. Adding stubs is a deliberate act, not an oversight.
+#
+# ────────────────────────────────────────────────────────────────────
+# Pattern: "stub that flips from passing to failing the moment the
+#  artifact it pretends to gate exists" (a.k.a. self-replacing stub).
+# ────────────────────────────────────────────────────────────────────
+#
+# When a wave references a gate whose real implementation depends on
+# an artifact that doesn't exist yet (e.g., G.supergraph-compose
+# needing a subgraph SDL emitted by a Wave-1 federation track), ship
+# a stub script that:
+#
+#   1. Exits 0 (passing) when the artifact is absent.
+#   2. Exits 1 (failing) the moment the artifact appears.
+#
+# This forces the track that produces the artifact to ALSO replace
+# the stub with the real gate logic — by construction. Workers cannot
+# ship the artifact without wiring its gate, because the gate-check
+# now fails.
+#
+# Example entry:
+#
+#   - path: contracts/scripts/compose-check.mjs
+#     type: placeholder
+#     owner: foundations-track
+#     expiry_wave: 1
+#     reason: |
+#       No-op stub for G.supergraph-compose until subgraph SDL lands
+#       at contracts/src/graphql/subgraph.graphql. Stub passes when
+#       SDL absent, fails when SDL present, forcing
+#       w1-foundation-federation to wire real `rover supergraph
+#       compose`.
+
+allowed_stubs: []

@@ -1,0 +1,18 @@
+{
+  "name": "@app/shared-kernel",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cross-layer primitives: Result type, errors, Clock port. No external dependencies.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run src"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "typescript": "5.5.3",
+    "vitest": "2.1.4"
+  }
+}

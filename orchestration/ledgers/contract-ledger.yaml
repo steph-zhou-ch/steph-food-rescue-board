@@ -1,0 +1,17 @@
+# Contract ledger — proposed contracts (data models, API interfaces,
+# event types, error shapes) that workers register before populating.
+#
+# Each entry is a contract that has been NAMED but not yet IMPLEMENTED.
+# Workers add an entry with status=proposed when they start a track,
+# flip it to status=accepted at track close, and meta-compose audits
+# the file against the codebase to surface forgotten contracts.
+#
+# Schema:
+#   id           kebab-case contract identifier (unique)
+#   type         data_model | api_interface | event_type | error_shape
+#   description  one-line scope + canonical location of the contract
+#   status       proposed | accepted | superseded
+#
+# This file starts empty. Wave-1+ tracks populate it.
+
+contracts: []

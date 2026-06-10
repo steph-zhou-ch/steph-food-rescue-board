@@ -1,0 +1,22 @@
+{
+  "name": "@charliehealth/gate-check",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Synchronization gate runner. Reads orchestration/gates/gates.json, runs the named gate's `commands:` sequentially, halts on first failure. Invoked via the doc-stable entry point `./orchestration/gates/gate-check.sh <gate-id>`.",
+  "type": "module",
+  "bin": {
+    "gate-check": "./src/run.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --dir test/integration --passWithNoTests"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "typescript": "5.5.3",
+    "vitest": "2.1.4"
+  }
+}

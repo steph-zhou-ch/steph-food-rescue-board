@@ -1,0 +1,133 @@
+# Registered AI worker agent classes for this service swarm.
+#
+# Each class is materialized as a Scion template under
+# orchestration/scion-templates/<class>/ (source-of-truth, committed to
+# the repo). The Captain preflight (Step 0.6 in docs/USER-GUIDE.md) installs
+# them into THIS engagement's grove via:
+#
+#   scion templates import orchestration/scion-templates/ --all
+#
+# This produces grove-scoped templates — each engagement's grove has
+# its own fleet of agent classes, isolated from other engagements'
+# templates. The manager spawns workers via:
+#
+#   scion create <track-id> -t <agent-class> -b swarm/<track-id>
+#
+# The template (in scion-templates/<class>/scion-agent.yaml) declares
+# harness + image + auth + system-prompt; the manager doesn't pass
+# --image / --harness at create-time. The agent's scope (allowed_paths,
+# forbidden_patterns) is documented here in this registry AND echoed
+# into the template's system-prompt.md so the worker reads it directly.
+#
+# Six agent classes: 5 on Claude (scion-claude:latest) + 1 on Codex
+# (scion-codex:latest, cross-model review). See
+# docs/typescript-swarm-playbook.md § "Codex review setup" for the one-time
+# hub-secret bootstrap that propagates ChatGPT OAuth tokens into the
+# Codex agent container.
+
+classes:
+  - id: typescript-domain-agent
+    template: typescript-domain-agent      # → orchestration/scion-templates/typescript-domain-agent/
+    description: "Pure TypeScript domain logic — entities, state machines, business rules, port interfaces. No framework, no I/O, no SQL driver."
+    allowed_paths:
+      - libs/domain/src/
+      - libs/domain/test/
+    forbidden_patterns:
+      - "from 'pg'"               # domain must not import the Postgres driver
+      - "from 'drizzle-orm'"      # domain must not depend on the ORM
+      - "from '@nestjs/"          # domain must not depend on NestJS
+      - "import 'fs'"             # no filesystem I/O in domain
+      - "import 'net'"
+
+  - id: typescript-api-agent
+    template: typescript-api-agent
+    description: "NestJS inbound surface — @Resolver classes, REST controllers, webhook receivers — under apps/app/src/. Shared wire types (scalars, federation directives, DTOs) live in libs/inbound-adapters."
+    allowed_paths:
+      - apps/app/src/graphql/
+      - apps/app/src/rest/
+      - apps/app/src/webhooks/
+      - apps/app/test/
+      - libs/inbound-adapters/src/     # shared scalars, federation directives, DTOs
+      - libs/inbound-adapters/test/
+    forbidden_patterns:
+      - "from 'pg'"               # API layer talks to repositories, not the driver
+      - "from 'drizzle-orm'"      # API layer doesn't import the ORM directly
+
+  - id: application-services-agent
+    template: application-services-agent
+    description: "End-to-end capability slice — composes domain + application use cases + persistence + integrations + the apps/-resident inbound surface into a coherent feature (e.g. app-book-appointment)."
+    allowed_paths:
+      - libs/domain/src/
+      - libs/domain/test/
+      - libs/application/src/
+      - libs/application/test/
+      - libs/inbound-adapters/src/                # shared inbound types
+      - libs/inbound-adapters/test/
+      - libs/outbound-adapters/src/persistence/
+      - libs/outbound-adapters/src/integrations/
+      - libs/outbound-adapters/src/messaging/
+      - libs/outbound-adapters/test/persistence/
+      - libs/outbound-adapters/test/integrations/
+      - libs/outbound-adapters/test/messaging/
+      - apps/app/src/                  # resolvers + controllers + webhooks live here
+      - apps/app/test/
+      - migrations/
+    forbidden_patterns:
+      - "from 'pg'"               # use Drizzle, not the raw driver
+      - "new Date()"              # use the shared-kernel clock port
+
+  - id: foundations-agent
+    template: foundations-agent
+    description: "Cross-cutting platform foundations — shared-kernel primitives (Result, Clock, errors), JWT verification + tenant context (outbound auth), Drizzle datasource + baseline schema, GraphQL scalars (wire envelope), observability plumbing, build/config wiring, and the cross-tier `contracts/` workspace package (event envelopes + GraphQL SDL). May touch root package.json + tsconfig + infra/."
+    allowed_paths:
+      - libs/shared-kernel/src/
+      - libs/shared-kernel/test/
+      - libs/outbound-adapters/src/auth/
+      - libs/outbound-adapters/test/auth/
+      - libs/outbound-adapters/src/persistence/   # datasource + baseline schema
+      - libs/outbound-adapters/test/persistence/
+      - libs/inbound-adapters/src/                # shared scalars + federation directives + DTOs
+      - libs/inbound-adapters/test/
+      - libs/domain/src/time/                     # time-policy port lives in domain
+      - libs/domain/test/time/
+      - apps/app/src/                  # AppModule + bootstrap + graphql/rest/webhooks
+      - apps/app/test/
+      - migrations/
+      - contracts/src/                            # Wave 1 contract workspace package — event envelopes + GraphQL SDL
+      - contracts/test/                           # contract-shape tests (SDL parse, envelope schema-conformance, etc.)
+      - contracts/package.json                    # package metadata + graphql-codegen scripts
+      - contracts/tsconfig.json                   # TS config for the contracts package
+      - docs/design/60-rollout/                   # Wave 9/10 rollout deliverables — runbook, dashboards, alert-rules, perf-slo, cutover-checklist
+      - tools/                                    # cross-cutting tool authorship (req-lint, req-coverage, check-track-meta-paths, etc.)
+      - package.json
+      - pnpm-workspace.yaml
+      - tsconfig.base.json
+      - tsconfig.json
+      - apps/app/package.json
+      - apps/app/drizzle.config.ts
+      - apps/app/config/
+      - infra/
+      - README.md                      # ONLY additive "Local dev DB" section may be appended; do NOT rewrite existing prose
+    forbidden_patterns:
+      - "new Date()"             # use the shared-kernel Clock port — UTC + display envelope per REQ-INV-TIMEZONE-DST
+      - "Date.now()"             # use the Clock port
+
+  - id: spec-adherence-agent
+    template: spec-adherence-agent
+    description: "Read-only spec-vs-impl auditor on Claude. Compares @criterion-tagged vitest tests against REQ predicates; verifies impl honors the predicate; flags missing coverage. Writes verdict to orchestration/reviews/. MUST NOT modify impl code."
+    allowed_paths:
+      - orchestration/reviews/
+    forbidden_patterns:
+      - "// @ts-ignore"           # auditor cannot suppress errors
+      - "// @ts-nocheck"
+      - "TODO"                    # auditor cannot leave TODOs in reviews
+
+  - id: code-review-codex
+    template: code-review-codex
+    description: "Read-only CROSS-MODEL code-review auditor running on Codex (gpt-5.5) via ChatGPT OAuth (auth-file mode). Runs in PARALLEL with spec-adherence-agent — different model, different blind spots. Focuses on idioms / security / missed edge cases / hidden architectural drift that a Claude reviewer would miss. Writes verdict to orchestration/reviews/. MUST NOT modify impl code. See docs/SWARM-QUALITY-FRAMEWORK.md Category G."
+    allowed_paths:
+      - orchestration/reviews/
+    forbidden_patterns:
+      - "// @ts-ignore"
+      - "// @ts-nocheck"
+      - "TODO"

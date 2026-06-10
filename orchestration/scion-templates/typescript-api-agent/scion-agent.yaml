@@ -1,0 +1,10 @@
+# Scion agent template — typescript-api-agent
+#
+# Spawns a TypeScript api-track worker that owns NestJS controllers,
+# Apollo GraphQL resolvers, REST endpoints, request handling, and DTO
+# shapes. Used for `app-*` tracks that ship user-facing API surface.
+
+schema_version: "1"
+description: "TypeScript api-track worker — NestJS controllers + Apollo resolvers + REST + DTO shapes."
+agent_instructions: agents.md
+system_prompt: system-prompt.md

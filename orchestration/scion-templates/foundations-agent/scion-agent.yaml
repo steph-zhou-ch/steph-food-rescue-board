@@ -1,0 +1,11 @@
+# Scion agent template — foundations-agent
+#
+# Spawns a TypeScript foundations-track worker that lands one-time
+# cross-cutting platform setup: build config, Drizzle datasource +
+# migrations, timezone helpers, tenant-isolation middleware, JWT
+# verification, request context. Used for `foundation-*` tracks.
+
+schema_version: "1"
+description: "TypeScript foundations-track worker — cross-cutting platform setup (build config, Drizzle, JWT, tenant context, timezone helpers)."
+agent_instructions: agents.md
+system_prompt: system-prompt.md

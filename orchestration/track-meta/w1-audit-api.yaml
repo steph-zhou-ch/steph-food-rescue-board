@@ -1,0 +1,43 @@
+track_id: "w1-audit-api"
+
+agent_class: "spec-adherence-agent"
+
+phase: 4
+wave: 1
+batch: 3
+
+track_summary: |
+  Spec-adherence audit of the w1-api-items implementation. Compares
+  @req-tagged tests against REQ predicates, verifies the implementation
+  honors each criterion, and flags missing coverage or deviations.
+  Read-only — does not modify implementation code.
+
+predecessors:
+  - "w1-api-items"
+
+subscribed_contracts: []
+
+cross_cutting_packs: []
+
+unblocks:
+  - "G.spec-adherence"
+
+deliverables:
+  - "orchestration/reviews/w1-audit-api.md"
+
+exit_criterion: |
+  Written verdict in orchestration/reviews/ covering all critical/high
+  criteria from REQ-CAP-POST-ITEM, REQ-CAP-BROWSE-FEED, REQ-CAP-GET-ITEM,
+  REQ-CAP-CLAIM-ITEM, REQ-CAP-REMOVE-LISTING, and REQ-INV-ITEM-LIFECYCLE.
+  Each criterion marked PASS, FAIL, or PARTIAL with rationale.
+
+source_of_truth:
+  req_ids:
+    - "REQ-CAP-POST-ITEM"
+    - "REQ-CAP-BROWSE-FEED"
+    - "REQ-CAP-GET-ITEM"
+    - "REQ-CAP-CLAIM-ITEM"
+    - "REQ-CAP-REMOVE-LISTING"
+    - "REQ-INV-ITEM-LIFECYCLE"
+
+execution_mode: hub_mode

@@ -1,0 +1,22 @@
+# Scion agent template — spec-adherence-agent
+#
+# Spawns a READ-ONLY auditor that compares @criterion-tagged tests
+# against the REQ catalog's YAML predicates. Verifies:
+#   1. predicate-fidelity — does the test actually assert the predicate?
+#   2. impl-honors-predicate — does the impl honor the predicate beyond
+#      what the test exercises?
+#   3. coverage-completeness — every critical/high criterion has at
+#      least one tagged test
+#
+# Writes a single verdict file at orchestration/reviews/<wave>-spec-
+# adherence.md with a structured findings YAML block. MUST NOT modify
+# impl code.
+#
+# Runs in PARALLEL with code-review-codex (the cross-model auditor on
+# the Codex/gpt-5.5 harness). Both verdicts gate the manager's
+# staging→main merge.
+
+schema_version: "1"
+description: "Read-only spec-vs-impl auditor on Claude. Compares @criterion-tagged tests against REQ predicates. Writes verdict to orchestration/reviews/."
+agent_instructions: agents.md
+system_prompt: system-prompt.md

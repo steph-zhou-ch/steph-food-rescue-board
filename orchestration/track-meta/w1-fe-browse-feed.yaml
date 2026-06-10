@@ -1,0 +1,45 @@
+track_id: "w1-fe-browse-feed"
+
+agent_class: "foundations-agent"
+
+phase: 4
+wave: 1
+batch: 2
+
+track_summary: |
+  Implement the browse feed page: responsive card grid of available items,
+  category filter pills (All/Food/Household/Other), header with item count
+  and "+ Post Item" CTA. Fetches from GET /api/items. Cards show photo,
+  category badge (color-coded), title, pickup location, poster, and time.
+  Clicking a card navigates to item detail.
+
+predecessors:
+  - "w1-api-items"
+
+subscribed_contracts: []
+
+cross_cutting_packs: []
+
+unblocks:
+  - "G.typecheck"
+  - "G.test"
+
+deliverables:
+  - "apps/web/src/pages/BrowseFeed.tsx"
+  - "apps/web/src/components/ItemCard.tsx"
+  - "apps/web/src/components/CategoryFilter.tsx"
+  - "apps/web/src/components/Header.tsx"
+  - "apps/web/src/hooks/useItems.ts"
+  - "apps/web/src/App.tsx"
+  - "apps/web/test/browse-feed.spec.ts"
+
+exit_criterion: |
+  Feed page renders items from the API in a responsive grid, category
+  filter pills work, card click navigates to detail. Typecheck passes,
+  all criteria from REQ-CAP-FE-BROWSE-FEED have tagged tests.
+
+source_of_truth:
+  req_ids:
+    - "REQ-CAP-FE-BROWSE-FEED"
+
+execution_mode: hub_mode

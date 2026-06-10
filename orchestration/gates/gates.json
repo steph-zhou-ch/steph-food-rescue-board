@@ -1,0 +1,15 @@
+{
+  "$comment": "Wave gates. Each gate names a deterministic command list the manager runs before merging staging → trunk (Phase 6/7). See _template-gate.json for the field shape and orchestration/prompts/manager-kickoff.md §8 for the gate-check semantics. Active gates (the wave currently in flight) live in `gates`; planned gates live in `future_gates` and get promoted to `gates` at the start of each wave's Phase 4. The G.design-sync entry below ships with the template — it is a no-op when clients/designs/ has no surfaces, and becomes blocking once the first surface is added.",
+  "schema_version": 1,
+  "gates": [
+    {
+      "id": "G.design-sync",
+      "description": "Verify every clients/designs/<surface>/design.yaml is parseable, has matching snapshots on disk, and that maps_to_req cross-refs resolve. No-op when no surfaces exist.",
+      "requires": [],
+      "commands": [
+        "pnpm --filter @charliehealth/design-sync check"
+      ]
+    }
+  ],
+  "future_gates": []
+}

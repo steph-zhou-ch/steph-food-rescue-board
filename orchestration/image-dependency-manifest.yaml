@@ -1,0 +1,134 @@
+# Image dependency manifest
+#
+# Declares the tools the worker container image MUST contain for this
+# engagement's workers (and the manager) to function.
+#
+# Read by `tools/captain-preflight/check.sh` (Section 7). Each declared
+# tool is probed via `podman run --rm <agent_image> bash -c '<probe>'`
+# before a wave is authorized for dispatch. Any non-zero probe fails
+# preflight loudly and surfaces the remediation block — Phase 5 dispatch
+# is unsafe until the gap is closed.
+#
+# Why this exists: the prior approach was reactive — workers discovered
+# missing toolchain mid-wave and filed informational escalations.
+# A future Category F entry in docs/SWARM-QUALITY-FRAMEWORK.md ("Image
+# dependency drift") would name this failure mode; for now the prevention
+# mechanism is this preflight manifest probe.
+#
+# Schema:
+#   agent_image:   the default image probed (string). May be overridden
+#                  per-agent-class in a future revision.
+#   required_tools: list of {name, purpose, probe, min_version?,
+#                            version_probe?, remediation}
+#     name           Human-readable tool name.
+#     purpose        Why the engagement needs it (1 line). Stack-specific.
+#     probe          Shell command that exits 0 iff the tool is present.
+#                    Run with `bash -c` inside the image.
+#     min_version    (optional) Minimum acceptable version. Free-form;
+#                    interpreted by the version-probe parser.
+#     version_probe  (optional) Shell command whose first line includes
+#                    the version. Only used when min_version is set.
+#     remediation    Multi-line block printed on failure. Tells the
+#                    Captain what to do — DO NOT make this generic;
+#                    point at the concrete fix for THIS engagement.
+#
+# Authoring rule: keep the probe trivial (one shell command, no flags),
+# and put all the diagnostic depth in `remediation`. The preflight is
+# meant to be fast and noisy, not subtle.
+
+agent_image: scion-claude:latest
+
+required_tools:
+  - name: git
+    purpose: branch ops, commit pairs, pull/push from worker sandbox
+    probe: command -v git
+
+  - name: node
+    purpose: pnpm typecheck, pnpm test, NestJS application boot, TypeScript tooling
+    probe: command -v node
+    min_version: "20"
+    version_probe: node --version
+    remediation: |
+      Image lacks Node 20. The worker container is `scion-claude:latest`,
+      which ships Node via the scion-base layer (core-base installs Node).
+      If `node --version` returns < 20, the base image has drifted to an
+      older Node. Two remediation paths:
+
+      A. Rebuild the scion-base layer (broad — affects every engagement).
+         `~/projects/scion/image-build/scripts/build-images.sh --builder
+         local-podman --target common` will refresh core-base + scion-base
+         + every harness image. Confirm `node --version` ≥ 20 inside
+         scion-claude:latest after rebuild.
+
+      B. Per-engagement node-overlay image (narrow — only if A is blocked).
+         Build a `scion-claude-node20:latest` from `scion-claude:latest`
+         with an explicit Node 20 install layer (e.g., NodeSource apt
+         packages). Update orchestration/ledgers/agent-class-registry.yaml
+         to specify that image for every class in this engagement.
+
+      Path A is strongly preferred — Node 20 is upstream-supported and
+      should be the default on the base image.
+
+  - name: pnpm
+    purpose: pnpm install / build / test / typecheck — the engagement's package manager
+    probe: command -v pnpm
+    min_version: "9"
+    version_probe: pnpm --version
+    remediation: |
+      Image lacks pnpm (or pnpm < 9). pnpm is not always pre-installed on
+      the scion base image. Remediation:
+
+      A. Bake pnpm into scion-base (recommended).
+         Add `RUN corepack enable && corepack prepare pnpm@latest --activate`
+         to `~/projects/scion/image-build/scion-base/Dockerfile`, then
+         `~/projects/scion/image-build/scripts/build-images.sh --builder
+         local-podman --target common`. Confirm `pnpm --version` ≥ 9
+         inside scion-claude:latest.
+
+      B. Per-engagement install at worker boot (currently in use).
+         orchestration/prompts/base.md §"Worker boot sequence" instructs
+         every worker to run the user-local corepack bootstrap on first
+         boot:
+
+           mkdir -p "$HOME/.local/bin" && \
+             export PATH="$HOME/.local/bin:$PATH" && \
+             COREPACK_HOME="$HOME/.cache/corepack" \
+               corepack enable --install-directory "$HOME/.local/bin" && \
+             COREPACK_HOME="$HOME/.cache/corepack" \
+               corepack prepare pnpm@9.15.9 --activate
+
+         IMPORTANT: a naive `corepack enable` without --install-directory
+         hits EACCES on the symlink to /usr/local/bin/pnpm because the
+         scion container runs as a non-root user (UID 1000) and
+         /usr/local/bin is root-owned. The --install-directory pattern
+         above writes to $HOME/.local/bin instead. Subsequent Bash tool
+         calls in the same worker session must prefix
+         `export PATH="$HOME/.local/bin:$PATH" && ` for pnpm to resolve.
+
+         Adds ~5s per worker start; works without image changes; requires
+         outbound network on first activate (Corepack downloads pnpm's
+         tarball + caches it under $HOME/.cache/corepack). Wave 0
+         (foundations-bootstrap) self-discovered this on 2026-05-26 even
+         before base.md spelled it out — proving the worker agent can
+         self-resolve, but at the cost of ~3 minutes of preflight burn.
+         Future workers read base.md and skip the discovery.
+
+  - name: docker
+    purpose: Testcontainers Postgres for integration tests under apps/app/test/e2e/
+    probe: command -v docker
+    remediation: |
+      Image lacks docker. The engagement's integration tests use
+      Testcontainers (https://testcontainers.com) to spin up Postgres
+      per-test-class; Testcontainers shells out to `docker` (or
+      `podman` in docker-compat mode) inside the worker container.
+
+      Remediation: bake docker (or `podman` symlinked as `docker`) into
+      the scion-base image. The container needs access to the host's
+      container runtime socket — Scion's default mount layout exposes
+      this; verify via `docker ps` inside a running worker.
+
+      If host runtime access is policy-blocked, the alternative is to
+      run a sibling Postgres container per worker (declared in the
+      engagement's docker-compose.yml) and point Testcontainers at it
+      via `TESTCONTAINERS_HOST_OVERRIDE` — costs one extra container
+      per worker but avoids the host-socket dependency.

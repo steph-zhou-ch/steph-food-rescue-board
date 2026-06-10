@@ -1,0 +1,23 @@
+{
+  "name": "@charliehealth/swarm-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "tsx render.ts",
+    "captain": "tsx captain.ts",
+    "watch": "tsx watch render.ts",
+    "open": "tsx render.ts && open dist/swarm-dashboard.html",
+    "captain:open": "tsx captain.ts && open dist/captain-dashboard.html",
+    "serve": "tsx serve.ts",
+    "serve:open": "tsx serve.ts & sleep 1 && open http://127.0.0.1:${PORT:-4317}/captain"
+  },
+  "dependencies": {
+    "yaml": "2.6.1"
+  },
+  "devDependencies": {
+    "tsx": "4.19.2",
+    "@types/node": "20.14.10",
+    "typescript": "5.5.3"
+  }
+}

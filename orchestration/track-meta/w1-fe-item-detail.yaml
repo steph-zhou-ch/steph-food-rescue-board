@@ -1,0 +1,45 @@
+track_id: "w1-fe-item-detail"
+
+agent_class: "foundations-agent"
+
+phase: 4
+wave: 1
+batch: 2
+
+track_summary: |
+  Implement the item detail page with status-aware actions. Shows hero
+  image, status badge (green=available, orange=claimed), category badge,
+  title, description, and detail card (pickup location, posted by, time,
+  expiry, claimed-by). Action buttons change by state: "Claim this item"
+  when available; "Mark as picked up" + "Unclaim" when claimed. Actions
+  call PATCH /api/items/:id/status and update the view in-place.
+
+predecessors:
+  - "w1-api-items"
+
+subscribed_contracts: []
+
+cross_cutting_packs: []
+
+unblocks:
+  - "G.typecheck"
+  - "G.test"
+
+deliverables:
+  - "apps/web/src/pages/ItemDetail.tsx"
+  - "apps/web/src/components/StatusBadge.tsx"
+  - "apps/web/src/components/DetailCard.tsx"
+  - "apps/web/src/components/ActionButtons.tsx"
+  - "apps/web/test/item-detail.spec.ts"
+
+exit_criterion: |
+  Detail page renders correctly for both available and claimed states,
+  claim/unclaim/pickup actions work and update the view without page
+  reload, back navigation returns to feed. Typecheck passes, all criteria
+  from REQ-CAP-FE-ITEM-DETAIL have tagged tests.
+
+source_of_truth:
+  req_ids:
+    - "REQ-CAP-FE-ITEM-DETAIL"
+
+execution_mode: hub_mode

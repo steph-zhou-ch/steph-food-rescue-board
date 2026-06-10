@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Per-user Claude Code settings (do not share)
+.claude/settings.local.json
+
+# Scion grove state (per-engagement; never committed)
+.scion/
+
+# Live session log (auto-rotated; rendered from the active Claude Code session)
+SESSION-LOG.md
+SESSION-LOG-*.md
+
+# Drizzle generated artifacts
+drizzle/meta/
+
+# Vitest
+.vitest/
+
+# Codegen output (regenerated from contracts)
+src/generated/
+**/generated/

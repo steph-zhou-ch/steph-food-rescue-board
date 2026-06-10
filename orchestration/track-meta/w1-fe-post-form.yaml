@@ -1,0 +1,44 @@
+track_id: "w1-fe-post-form"
+
+agent_class: "foundations-agent"
+
+phase: 4
+wave: 1
+batch: 2
+
+track_summary: |
+  Implement the post item form page: photo upload area, title with
+  character counter (0/100), description textarea with counter (0/500),
+  category pill selector, pickup location input, optional expiry picker,
+  poster name input, and "Post Item" submit button. Submits to
+  POST /api/items. Validates required fields client-side before submit.
+
+predecessors:
+  - "w1-api-items"
+
+subscribed_contracts: []
+
+cross_cutting_packs: []
+
+unblocks:
+  - "G.typecheck"
+  - "G.test"
+
+deliverables:
+  - "apps/web/src/pages/PostItem.tsx"
+  - "apps/web/src/components/CharacterCounter.tsx"
+  - "apps/web/src/components/CategoryPicker.tsx"
+  - "apps/web/src/components/PhotoUpload.tsx"
+  - "apps/web/test/post-form.spec.ts"
+
+exit_criterion: |
+  Form renders all fields per design, character counters update live,
+  required field validation prevents empty submit, successful POST
+  navigates to feed. Typecheck passes, all criteria from
+  REQ-CAP-FE-POST-FORM have tagged tests.
+
+source_of_truth:
+  req_ids:
+    - "REQ-CAP-FE-POST-FORM"
+
+execution_mode: hub_mode

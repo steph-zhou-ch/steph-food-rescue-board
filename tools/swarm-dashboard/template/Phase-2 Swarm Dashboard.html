@@ -1,0 +1,2317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Phase-2 Swarm Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root {
+    --bg:            #f7f7fb;
+    --surface:       #ffffff;
+    --surface-2:     #fafafc;
+    --border:        #e5e7eb;
+    --border-strong: #d4d7df;
+    --fg:            #15151c;
+    --fg-muted:      #666;
+    --fg-faint:      #8a8d96;
+
+    --primary:    #0066cc;
+    --primary-100:#e6efff;
+    --success:    #0a7f29;
+    --success-100:#dff5e4;
+    --warning:    #ffaa00;
+    --warning-100:#fff2d6;
+    --danger:     #cc0033;
+    --danger-100: #ffe1e8;
+    --purple:     #7700cc;
+    --purple-100: #f1e2ff;
+    --neutral-100:#eef0f4;
+    --neutral-200:#dbdee5;
+
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    --radius:   8px;
+    --radius-sm:6px;
+    --shadow-card: 0 1px 2px rgba(15, 18, 30, 0.04), 0 1px 1px rgba(15, 18, 30, 0.03);
+  }
+
+  [data-theme="dark"] {
+    --bg:            #0e0f13;
+    --surface:       #16181d;
+    --surface-2:     #1b1d23;
+    --border:        #272a31;
+    --border-strong: #353944;
+    --fg:            #e8eaef;
+    --fg-muted:      #9aa0ac;
+    --fg-faint:      #6c7280;
+
+    --primary:    #4d9bff;
+    --primary-100:#1b2a48;
+    --success:    #4ec76d;
+    --success-100:#142a1c;
+    --warning:    #ffbf3d;
+    --warning-100:#33270b;
+    --danger:     #ff5577;
+    --danger-100: #3a121e;
+    --purple:     #b97aff;
+    --purple-100: #2a153d;
+    --neutral-100:#22252c;
+    --neutral-200:#2e3138;
+
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.5), 0 1px 1px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* faint grid */
+    background-image:
+      linear-gradient(to right,  rgba(15,18,30,0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15,18,30,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+  }
+  [data-theme="dark"] body {
+    background-image:
+      linear-gradient(to right,  rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+  }
+  code, .mono, kbd, pre { font-family: var(--mono); }
+
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ----- Phase ribbon — wave-color stripe across the top of the page ----- */
+  .phase-ribbon {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    height: 3px;
+    width: 100%;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .phase-ribbon > span { display: block; height: 100%; }
+  .phase-ribbon > span.closed    { background: var(--success); }
+  .phase-ribbon > span.in-flight { background: var(--primary); }
+  .phase-ribbon > span.in-flight { background: repeating-linear-gradient(90deg, var(--primary), var(--primary) 6px, color-mix(in srgb, var(--primary) 60%, transparent) 6px, color-mix(in srgb, var(--primary) 60%, transparent) 12px); }
+  .phase-ribbon > span.pending   { background: var(--neutral-200); }
+
+  /* ----- Layout shell ----- */
+  .shell { max-width: 1480px; margin: 0 auto; padding: 28px 32px 96px; }
+
+  /* ----- Header ----- */
+  .header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 24px; margin-bottom: 28px;
+  }
+  .title-block .kicker {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-faint); letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .title-block .kicker .branch {
+    color: var(--fg); background: var(--neutral-100);
+    padding: 1px 6px; border-radius: 3px; letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .title-block h1 {
+    margin: 0 0 8px; font-size: 28px; font-weight: 600; letter-spacing: -0.02em;
+  }
+  .title-block .sub {
+    color: var(--fg-muted); font-size: 13px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  }
+  .title-block .sub .sep { color: var(--fg-faint); }
+  .title-block .sub code {
+    background: var(--neutral-100); padding: 1px 6px; border-radius: 4px;
+    font-size: 12px; color: var(--fg);
+  }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .pill-status {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 10px; border-radius: 999px;
+    background: var(--success-100); color: var(--success);
+    font-size: 12px; font-weight: 500;
+    font-family: var(--mono); letter-spacing: 0.02em;
+  }
+  .pill-status .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+    box-shadow: 0 0 0 0 var(--success);
+    animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent); }
+    70%  { box-shadow: 0 0 0 8px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+
+  .theme-toggle {
+    height: 28px; padding: 0 12px;
+    background: var(--surface); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 999px;
+    font-family: var(--sans); font-size: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .theme-toggle:hover { background: var(--surface-2); }
+
+  /* ----- Section heading ----- */
+  .section { margin-top: 32px; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg-faint);
+  }
+  .section-title {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+    color: var(--fg);
+  }
+  .section-sub { color: var(--fg-muted); font-size: 12px; }
+
+  /* ----- KPI strip ----- */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px 14px;
+    box-shadow: var(--shadow-card);
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi .label {
+    font-family: var(--mono);
+    font-size: 10.5px; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--fg-faint);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .kpi .label::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--neutral-200);
+  }
+  .kpi.kpi-primary .label::before  { background: var(--primary); }
+  .kpi.kpi-success .label::before  { background: var(--success); }
+  .kpi.kpi-warning .label::before  { background: var(--warning); }
+  .kpi.kpi-danger  .label::before  { background: var(--danger); }
+  .kpi.kpi-purple  .label::before  { background: var(--purple); }
+  .kpi .value {
+    font-family: var(--mono);
+    font-size: 32px; font-weight: 500; letter-spacing: -0.02em;
+    color: var(--fg); line-height: 1.1;
+    display: flex; align-items: baseline; gap: 6px;
+    font-variant-numeric: tabular-nums;
+    margin-top: 4px;
+  }
+  .kpi .value .total {
+    font-size: 16px; font-weight: 400; color: var(--fg-faint);
+  }
+  .kpi .meta { font-size: 11.5px; color: var(--fg-muted); margin-top: 4px; }
+  .kpi .meta b { font-weight: 500; color: var(--fg); }
+  .kpi .micro-bar {
+    margin-top: 10px; height: 3px; background: var(--neutral-100);
+    border-radius: 2px; overflow: hidden;
+  }
+  .kpi .micro-bar > div { height: 100%; background: var(--primary); border-radius: 2px; }
+  .kpi.kpi-success .micro-bar > div { background: var(--success); }
+
+  /* ----- Wave overview grid ----- */
+  .wave-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .wave-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px 16px;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+    transition: border-color .15s, transform .05s;
+  }
+  .wave-card.closed    { border-top: 2px solid var(--success); padding-top: 13px; }
+  .wave-card.in-flight { border-top: 2px solid var(--primary); padding-top: 13px; }
+  .wave-card.pending {
+    background: transparent;
+    border-style: dashed;
+    color: var(--fg-muted);
+  }
+  .wave-card.pending .num b,
+  .wave-card.pending .sub      { color: var(--fg-faint); }
+  .wave-card.pending .stats    { color: var(--fg-faint); }
+
+  .wave-card .row1 {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .wave-card .num {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--fg-faint); letter-spacing: 0.1em;
+  }
+  .wave-card .num b {
+    color: var(--fg); font-weight: 500; font-size: 13px;
+    letter-spacing: 0;
+  }
+  .wave-card .sub {
+    font-family: var(--mono);
+    font-size: 22px; font-weight: 500; letter-spacing: -0.02em;
+    color: var(--fg); margin: 4px 0 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .wave-card .sub .denom { color: var(--fg-faint); font-weight: 400; font-size: 16px; }
+  .wave-card .stats {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+    line-height: 1.55;
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .wave-card .stats .stat {
+    display: inline-flex; align-items: baseline; gap: 3px;
+  }
+  .wave-card .stats .stat b {
+    font-weight: 500; color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .wave-card .stats .stat .k { color: var(--fg-faint); }
+  .wave-card .stats .stat.dur b { color: var(--fg); }
+  .wave-card.in-flight .stats .stat.dur b::after {
+    content: ''; display: inline-block;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--primary);
+    margin-left: 4px; transform: translateY(-1px);
+    animation: blink 1.2s steps(2, start) infinite;
+  }
+  .wave-card.pending .stats .stat.dur,
+  .wave-card.pending .stats .stat.agt { visibility: hidden; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ----- Gantt ----- */
+  .gantt {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 18px 16px;
+  }
+  .gantt .head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .gantt h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+  .gantt .head .meta {
+    font-family: var(--mono); font-size: 11px; color: var(--fg-faint);
+  }
+  .gantt-track-grid {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    column-gap: 12px;
+    row-gap: 4px;
+    align-items: center;
+  }
+  .gantt-track-grid .lbl {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-muted); text-align: right;
+    letter-spacing: 0.04em;
+  }
+  .gantt-track-grid .lbl b { color: var(--fg); font-weight: 500; }
+  .gantt-row {
+    position: relative;
+    height: 22px;
+    background:
+      linear-gradient(to right, transparent 0, transparent calc(100% - 1px), var(--border) calc(100% - 1px), var(--border) 100%),
+      repeating-linear-gradient(to right, var(--surface-2) 0, var(--surface-2) 1px, transparent 1px, transparent 10%);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .gantt-bar {
+    position: absolute;
+    top: 3px; bottom: 3px;
+    border-radius: 2px;
+    display: flex; align-items: center;
+    padding: 0 6px;
+    font-family: var(--mono); font-size: 10.5px;
+    color: #fff;
+    white-space: nowrap; overflow: hidden;
+    cursor: default;
+  }
+  .gantt-bar.in-flight {
+    background: repeating-linear-gradient(45deg,
+      #cc0033, #cc0033 5px,
+      color-mix(in srgb, #cc0033 60%, transparent) 5px,
+      color-mix(in srgb, #cc0033 60%, transparent) 10px);
+  }
+  .gantt-bar.in-flight::after {
+    content: ''; position: absolute; right: -1px; top: 0; bottom: 0; width: 2px;
+    background: var(--primary); box-shadow: 0 0 8px var(--primary);
+    animation: blink 1.2s steps(2, start) infinite;
+  }
+  .gantt-bar .dur { opacity: .8; margin-left: 6px; font-size: 10px; }
+  .gantt-axis {
+    position: relative;
+    height: 18px;
+    margin-top: 4px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--fg-faint);
+  }
+  .gantt-axis .tick {
+    position: absolute; top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .gantt-axis .tick::before {
+    content: ''; display: block; width: 1px; height: 4px;
+    background: var(--border); margin: 0 auto 2px;
+  }
+  .gantt-axis .day-sep {
+    position: absolute; top: -2px; bottom: 0;
+    border-left: 1px dashed var(--border);
+    padding-left: 4px;
+    color: var(--fg-muted);
+  }
+  .gantt-bar { pointer-events: auto; }
+
+  /* Gantt hover popover */
+  .gantt-pop {
+    position: fixed;
+    z-index: 80;
+    min-width: 260px; max-width: 340px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 6px 24px color-mix(in srgb, #000 18%, transparent);
+    padding: 10px 12px 8px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--fg);
+    opacity: 0; transform: translateY(2px);
+    pointer-events: none;
+    transition: opacity .12s, transform .12s;
+  }
+  .gantt-pop.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .gantt-pop .pop-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .gantt-pop .pop-head .wlbl { font-weight: 500; color: var(--fg); letter-spacing: 0.04em; }
+  .gantt-pop .pop-head .dur { color: var(--fg-faint); font-size: 10.5px; }
+  .gantt-pop .pop-head .when { color: var(--fg-faint); font-size: 10.5px; margin-top: 2px; }
+  .gantt-pop ul {
+    margin: 0; padding: 0; list-style: none;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .gantt-pop li {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    gap: 8px; align-items: center;
+    padding: 3px 2px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .gantt-pop li:hover { background: var(--surface-2); }
+  .gantt-pop li .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--success);
+  }
+  .gantt-pop li.audited .dot  { background: var(--purple); }
+  .gantt-pop li.inflight .dot { background: var(--primary); animation: blink 1.2s steps(2, start) infinite; }
+  .gantt-pop li.complete .dot { background: var(--warning); }
+  .gantt-pop li .tid { color: var(--fg); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gantt-pop li .meta {
+    font-size: 10px; color: var(--fg-faint);
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .gantt-pop li .meta .f { color: var(--danger); margin-left: 4px; }
+  .gantt-pop .pop-foot {
+    margin-top: 6px; padding-top: 6px;
+    border-top: 1px dashed var(--border);
+    color: var(--fg-faint); font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+  .gantt-bar { cursor: help; }
+
+  /* progress */
+  .progress {
+    height: 3px; background: var(--neutral-100); border-radius: 2px;
+    margin-top: 12px; overflow: hidden;
+    position: relative;
+  }
+  .progress > div { height: 100%; background: var(--neutral-200); border-radius: 2px; transition: width .6s ease; }
+  .wave-card.closed    .progress > div { background: var(--success); }
+  .wave-card.in-flight .progress > div {
+    background: repeating-linear-gradient(45deg, var(--primary), var(--primary) 4px, color-mix(in srgb, var(--primary) 55%, transparent) 4px, color-mix(in srgb, var(--primary) 55%, transparent) 8px);
+  }
+
+  /* status pills (shared) */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    font-family: var(--sans);
+    line-height: 16px;
+    white-space: nowrap;
+  }
+  .pill .glyph { width: 5px; height: 5px; border-radius: 50%; }
+  .pill.merged   { background: var(--success-100); color: var(--success); }
+  .pill.merged   .glyph { background: var(--success); }
+  .pill.complete { background: var(--warning-100); color: #a06b00; }
+  .pill.complete .glyph { background: var(--warning); }
+  .pill.audited  { background: var(--purple-100); color: var(--purple); }
+  .pill.audited  .glyph { background: var(--purple); }
+  .pill.inflight,
+  .pill\.in-flight { background: var(--primary-100); color: var(--primary); }
+  .pill.inflight .glyph { background: var(--primary); }
+  .pill.pending  { background: var(--neutral-100); color: var(--fg-muted); }
+  .pill.pending  .glyph { background: var(--fg-faint); }
+  .pill.closed   { background: var(--success-100); color: var(--success); }
+  .pill.closed   .glyph { background: var(--success); }
+  .pill.rejected { background: var(--danger-100); color: var(--danger); }
+  .pill.rejected .glyph { background: var(--danger); }
+  .pill.approved { background: var(--success-100); color: var(--success); }
+  .pill.approved .glyph { background: var(--success); }
+
+  [data-theme="dark"] .pill.complete { color: var(--warning); }
+
+  /* ----- Chart card ----- */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 16px 18px 18px;
+  }
+  .chart-card .head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .chart-card h3 {
+    margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.005em;
+  }
+  .chart-legend {
+    display: flex; flex-wrap: wrap; gap: 8px 14px;
+    font-family: var(--mono); font-size: 11px; color: var(--fg-muted);
+  }
+  .chart-legend .swatch {
+    display: inline-block; width: 10px; height: 2px;
+    border-radius: 1px; margin-right: 6px; transform: translateY(-3px);
+  }
+  .chart-wrap { position: relative; height: 280px; }
+
+  /* ----- Two column ----- */
+  .two-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 16px;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .panel-head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    background: var(--surface);
+  }
+  .panel-head h3 {
+    margin: 0; font-size: 13px; font-weight: 600;
+  }
+  .panel-head .meta { font-family: var(--mono); font-size: 11px; color: var(--fg-faint); }
+
+  /* table */
+  .table-wrap {
+    overflow-x: auto;
+  }
+  table.tracks {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.tracks th, table.tracks td {
+    text-align: left; padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  table.tracks th {
+    font-weight: 500; font-size: 11px;
+    color: var(--fg-faint);
+    font-family: var(--mono);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    background: var(--surface-2);
+    position: sticky; top: 0; z-index: 1;
+    user-select: none; cursor: pointer;
+  }
+  table.tracks th .arrow {
+    display: inline-block; margin-left: 4px; color: var(--fg-faint);
+    transition: opacity .15s;
+    opacity: 0.3;
+  }
+  table.tracks th.sorted .arrow { opacity: 1; color: var(--primary); }
+  table.tracks tbody tr:hover { background: var(--surface-2); }
+  table.tracks tbody tr:last-child td { border-bottom: 0; }
+
+  table.tracks td.mono,
+  table.tracks th.mono { font-family: var(--mono); font-size: 12.5px; }
+  table.tracks td.muted { color: var(--fg-muted); }
+  table.tracks td.right { text-align: right; }
+  table.tracks td.findings-pos { color: var(--warning); font-variant-numeric: tabular-nums; }
+  table.tracks td.audits, table.tracks td.findings, table.tracks td.crit {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+  table.tracks td.merged-ts { font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
+  table.tracks td.merged-ts.empty { color: var(--fg-faint); font-style: normal; }
+  .wave-tag {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 4px;
+    background: var(--neutral-100); color: var(--fg);
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+  }
+
+  /* activity feed */
+  .feed {
+    max-height: 480px; overflow-y: auto;
+    padding: 4px 0;
+  }
+  .feed::-webkit-scrollbar { width: 8px; }
+  .feed::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  .feed::-webkit-scrollbar-track { background: transparent; }
+
+  .feed-item {
+    display: grid;
+    grid-template-columns: 64px 92px 1fr;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    align-items: start;
+    font-size: 12.5px;
+  }
+  .feed-item:last-child { border-bottom: 0; }
+  .feed-item .ts {
+    font-family: var(--mono); font-size: 11.5px;
+    color: var(--fg-faint);
+    padding-top: 1px;
+  }
+  .feed-item .kind {
+    display: inline-block;
+    padding: 1px 6px; border-radius: 3px;
+    font-family: var(--mono); font-size: 10.5px;
+    background: var(--neutral-100); color: var(--fg-muted);
+    line-height: 16px;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .feed-item .kind.commit         { background: var(--neutral-100); color: var(--fg); }
+  .feed-item .kind.audit_complete { background: var(--purple-100); color: var(--purple); }
+  .feed-item .kind.fix_dispatch   { background: var(--danger-100); color: var(--danger); }
+  .feed-item .kind.track_complete { background: var(--warning-100); color: #a06b00; }
+  .feed-item .kind.wave_outcome   { background: var(--success-100); color: var(--success); }
+  [data-theme="dark"] .feed-item .kind.track_complete { color: var(--warning); }
+
+  .feed-item .desc {
+    color: var(--fg);
+    line-height: 1.45;
+    word-break: break-word;
+  }
+  .feed-item .desc .sha { font-family: var(--mono); color: var(--fg-muted); }
+  .feed-item .desc .tag {
+    font-family: var(--mono); color: var(--fg);
+    background: var(--neutral-100); padding: 0 4px;
+    border-radius: 3px; font-size: 11.5px;
+  }
+  .feed-item .desc .verdict-ok  { color: var(--success); font-weight: 500; }
+  .feed-item .desc .verdict-rej { color: var(--danger); font-weight: 500; }
+  .feed-item .desc em { font-style: normal; color: var(--fg-muted); }
+
+  /* containers */
+  .containers-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+  .containers-card .panel-head { background: var(--surface); }
+  .containers-card pre {
+    margin: 0;
+    padding: 14px 16px 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--fg);
+    background: var(--surface);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .containers-card pre .h { color: var(--fg-faint); }
+  .containers-card pre .ok { color: var(--success); }
+  .containers-card pre .warn { color: var(--warning); }
+  .containers-card pre .crit { color: var(--danger); }
+  .containers-card pre .muted { color: var(--fg-muted); }
+
+  /* ----- Responsive ----- */
+  @media (max-width: 1180px) {
+    .kpi-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .wave-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .two-col { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .shell { padding: 20px 18px 64px; }
+    .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .wave-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .header { flex-direction: column; align-items: stretch; }
+    table.tracks th, table.tracks td { padding: 8px 10px; }
+  }
+
+  /* ----- Track row clickability ----- */
+  table.tracks tbody tr { cursor: pointer; }
+  table.tracks tbody tr:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: -2px;
+  }
+  table.tracks td.id-cell { position: relative; padding-right: 22px; }
+  table.tracks td.id-cell::after {
+    content: '›';
+    position: absolute; right: 8px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--fg-faint); font-size: 14px;
+    opacity: 0; transition: opacity .12s, transform .12s;
+  }
+  table.tracks tbody tr:hover .id-cell::after {
+    opacity: 1; transform: translateY(-50%) translateX(2px);
+  }
+
+  /* ----- Drawer ----- */
+  .drawer-backdrop {
+    position: fixed; inset: 0;
+    background: color-mix(in srgb, #000 35%, transparent);
+    backdrop-filter: blur(2px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s ease;
+    z-index: 100;
+  }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(680px, 92vw);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    box-shadow: -8px 0 32px color-mix(in srgb, #000 18%, transparent);
+    transform: translateX(100%);
+    transition: transform .22s cubic-bezier(.2,.7,.2,1);
+    z-index: 101;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    flex: 0 0 auto;
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .drawer-head .crumbs {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--fg-faint); letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .drawer-head .crumbs b { color: var(--fg); font-weight: 500; }
+  .drawer-head h2 {
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    font-size: 18px; font-weight: 500;
+    letter-spacing: -0.005em;
+    color: var(--fg);
+  }
+  .drawer-head .req {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--fg-muted);
+  }
+  .drawer-head .row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .drawer-head .x {
+    position: absolute; top: 14px; right: 14px;
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg-muted);
+    cursor: pointer;
+    font-size: 16px; line-height: 1;
+  }
+  .drawer-head .x:hover { background: var(--surface-2); color: var(--fg); }
+  .drawer-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 18px 22px 36px;
+  }
+  .drawer-body section { margin-bottom: 24px; }
+  .drawer-body section:last-child { margin-bottom: 0; }
+  .drawer-body h3 {
+    margin: 0 0 10px;
+    font-size: 11px; font-weight: 600;
+    color: var(--fg-faint);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .drawer-body h3 .count {
+    margin-left: 6px;
+    font-family: var(--mono); font-weight: 500;
+    color: var(--fg-muted);
+    letter-spacing: 0;
+  }
+  .drawer-body p.summary {
+    margin: 0 0 10px;
+    color: var(--fg-muted);
+    font-size: 13.5px; line-height: 1.55;
+    max-width: 62ch;
+  }
+  .crit-list {
+    margin: 0; padding: 0; list-style: none;
+    display: flex; flex-direction: column; gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .crit-list li {
+    display: grid;
+    grid-template-columns: 70px 22px 1fr auto;
+    gap: 10px;
+    align-items: baseline;
+    padding: 8px 12px;
+    background: var(--surface);
+    font-size: 13px;
+  }
+  .crit-list li .cid {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--fg-faint); letter-spacing: 0.04em;
+  }
+  .crit-list li .glyph {
+    width: 12px; height: 12px; border-radius: 50%;
+    display: inline-block;
+    background: var(--success);
+    margin-top: 3px;
+  }
+  .crit-list li.fail .glyph { background: var(--danger); }
+  .crit-list li.pending .glyph { background: var(--neutral-300); }
+  .crit-list li.fixed .glyph {
+    background: var(--success);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 35%, transparent);
+  }
+  .crit-list li .desc { color: var(--fg); line-height: 1.45; }
+  .crit-list li .tag-mini {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--fg-faint);
+    background: var(--surface-2);
+    padding: 2px 5px; border-radius: 3px;
+    letter-spacing: 0.04em;
+  }
+  .crit-list li.fail .tag-mini { color: var(--danger); }
+  .crit-list li.fixed .tag-mini { color: var(--success); }
+
+  .finding {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--danger);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: var(--surface);
+  }
+  .finding.resolved { border-left-color: var(--success); }
+  .finding .top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 4px;
+  }
+  .finding .fid {
+    font-family: var(--mono); font-size: 11px; color: var(--fg-muted);
+    letter-spacing: 0.04em;
+  }
+  .finding .verdict-tag {
+    font-family: var(--mono); font-size: 10px;
+    padding: 2px 6px; border-radius: 3px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .finding .verdict-tag.open    { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .finding .verdict-tag.resolved{ background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+  .finding .what {
+    color: var(--fg); font-size: 13.5px; line-height: 1.5;
+    margin: 0 0 4px;
+  }
+  .finding .fix {
+    color: var(--fg-muted); font-size: 12.5px; line-height: 1.5;
+    margin: 0;
+    padding-left: 14px; border-left: 1px solid var(--border);
+  }
+  .finding .fix b { color: var(--success); font-weight: 500; font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; }
+
+  .audit-log {
+    margin: 0; padding: 0; list-style: none;
+    border-left: 1px dashed var(--border);
+    margin-left: 6px;
+    padding-left: 16px;
+  }
+  .audit-log li {
+    position: relative;
+    padding: 6px 0;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.5;
+  }
+  .audit-log li::before {
+    content: ''; position: absolute; left: -21px; top: 12px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--neutral-300);
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .audit-log li.ok::before  { background: var(--success); }
+  .audit-log li.rej::before { background: var(--danger); }
+  .audit-log li.fix::before { background: var(--warning); }
+  .audit-log li .ts { color: var(--fg-faint); margin-right: 8px; }
+  .audit-log li .what { color: var(--fg); }
+  .audit-log li.rej .what { color: var(--danger); }
+  .audit-log li.fix .what { color: var(--warning); }
+</style>
+</head>
+<body>
+<div class="phase-ribbon" id="phase-ribbon"></div>
+<div class="shell">
+
+  <!-- ============================================================
+       Inlined data
+       ============================================================ -->
+  <script id="swarm-data" type="application/json">
+  {
+    "generatedAt": "2026-05-12T11:02:14Z",
+    "kpis": {
+      "wavesClosed": 4, "wavesTotal": 10,
+      "criteriaDelivered": 181, "criteriaTotal": 361,
+      "auditCycles": 12, "findings": 17, "fixCycles": 2
+    },
+    "waves": [
+      { "n": 1,  "status": "closed",    "delivered": 22, "total": 22, "tracks": 2, "audits": 2, "findings": 2, "fixCycles": 1, "agents": 3, "start": "2026-05-11T05:12Z", "end": "2026-05-11T09:02Z" },
+      { "n": 2,  "status": "closed",    "delivered": 64, "total": 64, "tracks": 4, "audits": 3, "findings": 4, "fixCycles": 1, "agents": 5, "start": "2026-05-11T10:45Z", "end": "2026-05-11T17:02Z" },
+      { "n": 3,  "status": "closed",    "delivered": 73, "total": 73, "tracks": 6, "audits": 2, "findings": 0, "fixCycles": 0, "agents": 6, "start": "2026-05-11T18:34Z", "end": "2026-05-11T22:58Z" },
+      { "n": 4,  "status": "closed",    "delivered": 33, "total": 33, "tracks": 3, "audits": 3, "findings": 8, "fixCycles": 1, "agents": 4, "start": "2026-05-11T23:30Z", "end": "2026-05-12T02:32Z" },
+      { "n": 5,  "status": "in-flight", "delivered": 0,  "total": 11, "tracks": 1, "audits": 1, "findings": 5, "fixCycles": 0, "agents": 2, "start": "2026-05-12T03:00Z", "end": null },
+      { "n": 6,  "status": "pending",   "delivered": 0,  "total": 38, "tracks": 0, "audits": 0, "findings": 0, "fixCycles": 0, "agents": 0, "start": null, "end": null },
+      { "n": 7,  "status": "pending",   "delivered": 0,  "total": 41, "tracks": 0, "audits": 0, "findings": 0, "fixCycles": 0, "agents": 0, "start": null, "end": null },
+      { "n": 8,  "status": "pending",   "delivered": 0,  "total": 29, "tracks": 0, "audits": 0, "findings": 0, "fixCycles": 0, "agents": 0, "start": null, "end": null },
+      { "n": 9,  "status": "pending",   "delivered": 0,  "total": 25, "tracks": 0, "audits": 0, "findings": 0, "fixCycles": 0, "agents": 0, "start": null, "end": null },
+      { "n": 10, "status": "pending",   "delivered": 0,  "total": 25, "tracks": 0, "audits": 0, "findings": 0, "fixCycles": 0, "agents": 0, "start": null, "end": null }
+    ],
+    "tracks": [
+      { "wave": 1, "id": "w1-slot-inventory",          "req": "REQ-CAP-MANAGE-SLOTS",            "criteria": 16, "status": "merged",   "audits": 1, "findings": 0, "merged": "2026-05-11T07:14Z" },
+      { "wave": 1, "id": "w1-provider-schedule",       "req": "REQ-CAP-PROVIDER-SCHEDULE",       "criteria":  6, "status": "merged",   "audits": 1, "findings": 2, "merged": "2026-05-11T09:02Z" },
+
+      { "wave": 2, "id": "w2-book-appointment",        "req": "REQ-CAP-BOOK-APPOINTMENT",        "criteria": 35, "status": "merged",   "audits": 2, "findings": 4, "merged": "2026-05-11T15:48Z" },
+      { "wave": 2, "id": "w2-cancel-appointment",      "req": "REQ-CAP-CANCEL-APPOINTMENT",      "criteria": 12, "status": "merged",   "audits": 1, "findings": 0, "merged": "2026-05-11T16:11Z" },
+      { "wave": 2, "id": "w2-confirm-appointment",     "req": "REQ-CAP-CONFIRM-APPOINTMENT",     "criteria":  9, "status": "merged",   "audits": 0, "findings": 0, "merged": "2026-05-11T16:30Z" },
+      { "wave": 2, "id": "w2-appointment-status",      "req": "REQ-CAP-APPOINTMENT-STATUS",      "criteria":  8, "status": "merged",   "audits": 0, "findings": 0, "merged": "2026-05-11T17:02Z" },
+
+      { "wave": 3, "id": "w3-patient-roster",          "req": "REQ-CAP-PATIENT-ROSTER",          "criteria": 14, "status": "merged",   "audits": 1, "findings": 0, "merged": "2026-05-11T20:18Z" },
+      { "wave": 3, "id": "w3-provider-roster",         "req": "REQ-CAP-PROVIDER-ROSTER",         "criteria": 12, "status": "merged",   "audits": 0, "findings": 0, "merged": "2026-05-11T20:44Z" },
+      { "wave": 3, "id": "w3-clinical-notes",          "req": "REQ-CAP-CLINICAL-NOTES",          "criteria": 18, "status": "merged",   "audits": 1, "findings": 0, "merged": "2026-05-11T21:55Z" },
+      { "wave": 3, "id": "w3-encounter-log",           "req": "REQ-CAP-ENCOUNTER-LOG",           "criteria": 11, "status": "merged",   "audits": 0, "findings": 0, "merged": "2026-05-11T22:12Z" },
+      { "wave": 3, "id": "w3-referral-intake",         "req": "REQ-CAP-REFERRAL-INTAKE",         "criteria": 10, "status": "merged",   "audits": 0, "findings": 0, "merged": "2026-05-11T22:39Z" },
+      { "wave": 3, "id": "w3-eligibility-check",       "req": "REQ-CAP-ELIGIBILITY-CHECK",       "criteria":  8, "status": "merged",   "audits": 0, "findings": 0, "merged": "2026-05-11T22:58Z" },
+
+      { "wave": 4, "id": "w4-reschedule-appointment",  "req": "REQ-CAP-RESCHEDULE-APPOINTMENT",  "criteria": 22, "status": "merged",   "audits": 2, "findings": 8, "merged": "2026-05-12T01:30Z" },
+      { "wave": 4, "id": "w4-waitlist",                "req": "REQ-CAP-WAITLIST",                "criteria":  7, "status": "merged",   "audits": 1, "findings": 0, "merged": "2026-05-12T02:08Z" },
+      { "wave": 4, "id": "w4-no-show",                 "req": "REQ-CAP-NO-SHOW-POLICY",          "criteria":  4, "status": "merged",   "audits": 0, "findings": 0, "merged": "2026-05-12T02:32Z" },
+
+      { "wave": 5, "id": "w5-materialize-care-plan",   "req": "REQ-CAP-MATERIALIZE-CARE-PLAN",   "criteria": 11, "status": "audited",  "audits": 1, "findings": 5, "merged": null },
+      { "wave": 5, "id": "w5-spec-adherence-batch-1",  "req": "REQ-FIX-SAE-0037",                "criteria":  5, "status": "in-flight","audits": 0, "findings": 0, "merged": null }
+    ],
+    "burndown": {
+      "waves": [
+        { "n": 1, "color": "#0a7f29", "points": [
+          ["2026-05-11T05:00Z", 0],  ["2026-05-11T07:14Z", 16], ["2026-05-11T09:02Z", 22]
+        ]},
+        { "n": 2, "color": "#0066cc", "points": [
+          ["2026-05-11T10:00Z", 0],  ["2026-05-11T15:48Z", 35], ["2026-05-11T16:11Z", 47],
+          ["2026-05-11T16:30Z", 56], ["2026-05-11T17:02Z", 64]
+        ]},
+        { "n": 3, "color": "#7700cc", "points": [
+          ["2026-05-11T18:00Z", 0],  ["2026-05-11T20:18Z", 14], ["2026-05-11T20:44Z", 26],
+          ["2026-05-11T21:55Z", 44], ["2026-05-11T22:12Z", 55], ["2026-05-11T22:39Z", 65],
+          ["2026-05-11T22:58Z", 73]
+        ]},
+        { "n": 4, "color": "#ffaa00", "points": [
+          ["2026-05-11T23:30Z", 0],  ["2026-05-12T01:30Z", 22], ["2026-05-12T02:08Z", 29],
+          ["2026-05-12T02:32Z", 33]
+        ]},
+        { "n": 5, "color": "#cc0033", "points": [
+          ["2026-05-12T03:00Z", 0],  ["2026-05-12T05:43Z", 0], ["2026-05-12T11:02Z", 0]
+        ]}
+      ]
+    },
+    "containers": "NAME                                   HARNESS   STATUS                LAST ACTIVITY\nmanager                                claude    running (Up 4h)       just now\nscion-broker                           none      running (Up 4h12m)    9s ago\naudit-sae                              claude    running (Up 4h)       2m ago\nw5-materialize-care-plan               claude    completed (Up 6h)     12m ago\nw5-spec-adherence-batch-1              claude    stalled (Up 5h)       14s ago\nw4-reschedule-appointment              claude    merged (Exited 8h)    8h ago\nw4-waitlist                            claude    merged (Exited 9h)    9h ago\nw4-no-show                             claude    merged (Exited 9h)    9h ago\nw3-eligibility-check                   claude    merged (Exited 12h)   12h ago\nw3-referral-intake                     claude    merged (Exited 12h)   12h ago"
+  }
+  </script>
+
+  <!-- ============================================================
+       Render
+       ============================================================ -->
+
+  <!-- Header -->
+  <div class="header">
+    <div class="title-block">
+      <div class="kicker">
+        <span>swarm-execution-v2</span>
+        <span>·</span>
+        <span class="branch">trunk</span>
+      </div>
+      <h1>Phase-2 Swarm Dashboard</h1>
+      <div class="sub">
+        <span id="gen-ts">Generated —</span>
+        <span class="sep">·</span>
+        <span>static page, run <code>pnpm render</code> to refresh</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="pill-status"><span class="dot"></span>manager · running</span>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+        <span id="theme-toggle-glyph">◐</span>
+        <span id="theme-toggle-label">Dark</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <section class="section" style="margin-top:0">
+    <div class="section-head">
+      <div class="eyebrow">overview</div>
+    </div>
+    <div class="kpi-strip" id="kpi-strip"></div>
+  </section>
+
+  <!-- Wave overview -->
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Waves</div>
+        <div class="section-sub">10 sequential waves &middot; one or more tracks per wave</div>
+      </div>
+    </div>
+    <div class="wave-grid" id="wave-grid"></div>
+  </section>
+
+  <!-- Project burndown -->
+  <section class="section">
+    <div class="chart-card">
+      <div class="head">
+        <div>
+          <h3>Project burndown — criteria delivered</h3>
+          <div class="section-sub" style="margin-top:2px">
+            <span id="proj-actual">—</span>
+            <span class="sep" style="opacity:.4">·</span>
+            <span id="proj-velocity">—</span>
+            <span class="sep" style="opacity:.4">·</span>
+            <span id="proj-eta">—</span>
+          </div>
+        </div>
+        <div class="chart-legend" id="proj-legend"></div>
+      </div>
+      <div class="chart-wrap" style="height:240px"><canvas id="project-burndown"></canvas></div>
+    </div>
+  </section>
+
+  <!-- Gantt strip -->
+  <section class="section">
+    <div class="gantt">
+      <div class="head">
+        <h3>Wave timeline</h3>
+        <div class="meta" id="gantt-meta">—</div>
+      </div>
+      <div class="gantt-track-grid" id="gantt-rows"></div>
+      <div class="gantt-axis" id="gantt-axis" style="margin-left:72px"></div>
+    </div>
+  </section>
+
+  <!-- Burndown -->
+  <section class="section">
+    <div class="chart-card">
+      <div class="head">
+        <h3>Cumulative criteria merged over time</h3>
+        <div class="chart-legend" id="chart-legend"></div>
+      </div>
+      <div class="chart-wrap"><canvas id="burndown"></canvas></div>
+    </div>
+  </section>
+
+  <!-- Two-column -->
+  <section class="section">
+    <div class="two-col">
+      <!-- Track table -->
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Tracks</h3>
+          <span class="meta" id="track-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="tracks" id="track-table">
+            <thead>
+              <tr>
+                <th data-key="wave"     class="sort sorted asc">Wave<span class="arrow">↑</span></th>
+                <th data-key="id"       class="sort">Track<span class="arrow">↑</span></th>
+                <th data-key="req"      class="sort">REQ<span class="arrow">↑</span></th>
+                <th data-key="criteria" class="sort">Criteria<span class="arrow">↑</span></th>
+                <th data-key="status"   class="sort">Status<span class="arrow">↑</span></th>
+                <th data-key="audits"   class="sort">Audits<span class="arrow">↑</span></th>
+                <th data-key="findings" class="sort">Findings<span class="arrow">↑</span></th>
+                <th data-key="merged"   class="sort">Merged<span class="arrow">↑</span></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Activity feed -->
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Recent activity</h3>
+          <span class="meta" id="feed-count"></span>
+        </div>
+        <div class="feed" id="feed"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Containers -->
+  <section class="section">
+    <div class="containers-card">
+      <div class="panel-head">
+        <h3>Container snapshot</h3>
+        <span class="meta">scion list &middot; 11 containers</span>
+      </div>
+      <pre id="containers"></pre>
+    </div>
+  </section>
+
+  <!-- Drawer (track detail) -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+  <div class="gantt-pop" id="gantt-pop"></div>
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Track detail">
+    <div class="drawer-head" style="position:relative">
+      <button class="x" id="drawer-close" aria-label="Close">×</button>
+      <div class="crumbs">
+        <span>swarm-execution-v2</span>
+        <span>›</span>
+        <span id="dr-wave">Wave —</span>
+        <span>›</span>
+        <b id="dr-track">—</b>
+      </div>
+      <h2 id="dr-title">—</h2>
+      <div class="req" id="dr-req">—</div>
+      <div class="row" id="dr-row"></div>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+
+</div>
+
+<script>
+/* ============================================================
+   Activity feed — generated once below; written into JSON above
+   would bloat the inline blob, so we synthesize at boot.
+   ============================================================ */
+const ACTIVITY = [
+  // most recent first
+  ["2026-05-12T10:45Z", "commit",         "5534859e", "[review] w5-spec-adherence batch-1 — verdict: rejected", "rej"],
+  ["2026-05-12T10:43Z", "audit_complete", null,       "SAE-0038 (wave 5) — verdict: rejected — 5 findings", "rej"],
+  ["2026-05-12T10:12Z", "commit",         "a14c2e07", "[event+compose] SAE-0038 dispatched to audit-sae", null],
+  ["2026-05-12T07:39Z", "commit",         "0e120edd", "[event+compose+dispatch] SAE-0037; w5-spec-adherence-batch-1 ready", null],
+  ["2026-05-12T07:31Z", "fix_dispatch",   null,       "manager → w5 worker: 5 findings, batch-1 (cycle 1/3)", null],
+  ["2026-05-12T05:43Z", "commit",         "841134f7", "[complete:w5-materialize-care-plan] 11/11 criteria GREEN", null],
+  ["2026-05-12T05:42Z", "track_complete", null,       "w5-materialize-care-plan reached complete (cycle 1)", null],
+  ["2026-05-12T04:18Z", "commit",         "b91ade23", "[progress] w5-materialize-care-plan 9/11", null],
+  ["2026-05-12T03:45Z", "audit_complete", null,       "SAE-0034 (wave 4) — verdict: approved — 0 findings", "ok"],
+  ["2026-05-12T03:12Z", "commit",         "76ee44d1", "[event+compose] SAE-0034 dispatched to audit-sae", null],
+  ["2026-05-12T02:32Z", "commit",         "fc6a94bd", "[merge] swarm/w4-reschedule-appointment → swarm-execution-v2 (Wave 4 CLOSED)", null],
+  ["2026-05-12T02:31Z", "wave_outcome",   null,       "Wave 4 CLOSED — 33/33 criteria · 3 tracks · 3 audits · 8 findings", "ok"],
+  ["2026-05-12T02:32Z", "commit",         "3a8f1c20", "[merge] swarm/w4-no-show → swarm-execution-v2", null],
+  ["2026-05-12T02:08Z", "commit",         "9b1c4a08", "[merge] swarm/w4-waitlist → swarm-execution-v2", null],
+  ["2026-05-12T01:30Z", "commit",         "5f33b201", "[merge] swarm/w4-reschedule-appointment → trunk", null],
+  ["2026-05-12T01:18Z", "audit_complete", null,       "SAE-0033 (wave 4 reschedule, cycle 2) — verdict: approved — 0 findings", "ok"],
+  ["2026-05-12T00:42Z", "commit",         "ce17822b", "[fix-complete:w4-reschedule-appointment] 8 findings resolved", null],
+  ["2026-05-11T23:55Z", "commit",         "1d2a6e90", "[progress] w4-reschedule-appointment 22/22", null],
+  ["2026-05-11T23:11Z", "audit_complete", null,       "SAE-0032 (wave 4 reschedule) — verdict: rejected — 8 findings", "rej"],
+  ["2026-05-11T22:58Z", "commit",         "8a4e1f02", "[merge] swarm/w3-eligibility-check → trunk", null],
+  ["2026-05-11T22:58Z", "wave_outcome",   null,       "Wave 3 CLOSED — 73/73 criteria · 6 tracks · 2 audits · 0 findings", "ok"],
+  ["2026-05-11T22:39Z", "commit",         "27f019d4", "[merge] swarm/w3-referral-intake → trunk", null],
+  ["2026-05-11T22:12Z", "commit",         "412d77a0", "[merge] swarm/w3-encounter-log → trunk", null],
+  ["2026-05-11T21:55Z", "commit",         "63a8c4ff", "[merge] swarm/w3-clinical-notes → trunk", null],
+  ["2026-05-11T21:40Z", "audit_complete", null,       "SAE-0030 (wave 3 clinical-notes) — verdict: approved — 0 findings", "ok"],
+  ["2026-05-11T21:12Z", "commit",         "0c2f6691", "[complete:w3-clinical-notes] 18/18 criteria GREEN", null],
+  ["2026-05-11T20:44Z", "commit",         "be94110c", "[merge] swarm/w3-provider-roster → trunk", null],
+  ["2026-05-11T20:18Z", "commit",         "df1aa721", "[merge] swarm/w3-patient-roster → trunk", null],
+  ["2026-05-11T19:50Z", "audit_complete", null,       "SAE-0029 (wave 3 patient-roster) — verdict: approved — 0 findings", "ok"],
+  ["2026-05-11T19:02Z", "commit",         "5fe2089a", "[complete:w3-patient-roster] 14/14 criteria GREEN", null],
+  ["2026-05-11T18:34Z", "commit",         "a3b18f44", "[dispatch] wave 3 — 6 tracks → workers", null],
+  ["2026-05-11T17:02Z", "commit",         "20de01b6", "[merge] swarm/w2-appointment-status → trunk", null],
+  ["2026-05-11T17:02Z", "wave_outcome",   null,       "Wave 2 CLOSED — 64/64 criteria · 4 tracks · 3 audits · 4 findings", "ok"],
+  ["2026-05-11T16:30Z", "commit",         "ee9c2103", "[merge] swarm/w2-confirm-appointment → trunk", null],
+  ["2026-05-11T16:11Z", "commit",         "31a04f79", "[merge] swarm/w2-cancel-appointment → trunk", null],
+  ["2026-05-11T15:48Z", "commit",         "47b9e2ad", "[merge] swarm/w2-book-appointment → trunk", null],
+  ["2026-05-11T15:30Z", "audit_complete", null,       "SAE-0028 (wave 2 book, cycle 2) — verdict: approved — 0 findings", "ok"],
+  ["2026-05-11T14:55Z", "commit",         "8ee21043", "[fix-complete:w2-book-appointment] 4 findings resolved", null],
+  ["2026-05-11T13:21Z", "audit_complete", null,       "SAE-0027 (wave 2 book) — verdict: rejected — 4 findings", "rej"],
+  ["2026-05-11T12:48Z", "commit",         "11ab09e2", "[complete:w2-book-appointment] 35/35 criteria GREEN", null],
+  ["2026-05-11T12:00Z", "commit",         "a0093311", "[progress] w2-book-appointment 28/35", null],
+  ["2026-05-11T10:45Z", "commit",         "5c7e2210", "[dispatch] wave 2 — 4 tracks → workers", null],
+  ["2026-05-11T09:02Z", "commit",         "f0eb4a23", "[merge] swarm/w1-provider-schedule → trunk", null],
+  ["2026-05-11T09:02Z", "wave_outcome",   null,       "Wave 1 CLOSED — 22/22 criteria · 2 tracks · 2 audits · 2 findings", "ok"],
+  ["2026-05-11T08:48Z", "audit_complete", null,       "SAE-0026 (wave 1 provider-schedule, cycle 2) — verdict: approved — 0 findings", "ok"],
+  ["2026-05-11T08:30Z", "commit",         "94c2bb01", "[fix-complete:w1-provider-schedule] 2 findings resolved", null],
+  ["2026-05-11T07:54Z", "audit_complete", null,       "SAE-0025 (wave 1 provider-schedule) — verdict: rejected — 2 findings", "rej"],
+  ["2026-05-11T07:14Z", "commit",         "2d18e904", "[merge] swarm/w1-slot-inventory → trunk", null],
+  ["2026-05-11T07:01Z", "audit_complete", null,       "SAE-0024 (wave 1 slot-inventory) — verdict: approved — 0 findings", "ok"],
+  ["2026-05-11T06:42Z", "commit",         "b81f0c5a", "[complete:w1-slot-inventory] 16/16 criteria GREEN", null],
+  ["2026-05-11T06:20Z", "commit",         "44a2e017", "[progress] w1-slot-inventory 13/16", null],
+  ["2026-05-11T05:48Z", "commit",         "7c0b3148", "[progress] w1-slot-inventory 7/16", null],
+  ["2026-05-11T05:12Z", "commit",         "d4291b88", "[dispatch] wave 1 — 2 tracks → workers", null],
+  ["2026-05-11T05:00Z", "commit",         "1a5e60f0", "[init] swarm-execution-v2 created; manager online", null],
+  ["2026-05-11T04:58Z", "commit",         "0fd1ab44", "[plan] phase-2 plan accepted — 10 waves, 361 criteria", null],
+  ["2026-05-11T04:55Z", "commit",         "9be20081", "[plan] phase-2 plan drafted by manager", null],
+  ["2026-05-11T04:32Z", "commit",         "59023f1d", "[bootstrap] container images built (claude, none)", null],
+  ["2026-05-11T04:20Z", "commit",         "edaa1b2f", "[bootstrap] scion broker started; manager subscribed", null],
+  ["2026-05-11T04:15Z", "commit",         "33f8c91a", "[bootstrap] phase-2 workspace materialized", null],
+  ["2026-05-11T04:08Z", "commit",         "00aaa11d", "[bootstrap] phase-1 trunk snapshotted as phase-2 base", null]
+];
+
+/* ============================================================
+   Track details — drawer content. Keyed by track id.
+   ============================================================ */
+const TRACK_DETAILS = {
+  "w1-slot-inventory": {
+    summary: "Schedulers need a single source of truth for which appointment slots exist, who owns them, and whether they're bookable. This track exposes slot CRUD + availability projection used by every downstream booking flow.",
+    criteria: [
+      ["CRIT-001", "Create slot with provider, location, start, duration, capacity", "pass"],
+      ["CRIT-002", "Reject slot with end-before-start", "pass"],
+      ["CRIT-003", "Reject slot overlapping existing slot for same provider+room", "pass"],
+      ["CRIT-004", "Update slot capacity (decrease only when bookings ≤ new cap)", "pass"],
+      ["CRIT-005", "Soft-delete slot; bookings preserved with terminal status", "pass"],
+      ["CRIT-006", "List slots by provider in [from, to] window", "pass"],
+      ["CRIT-007", "List slots by location in [from, to] window", "pass"],
+      ["CRIT-008", "Availability projection excludes fully-booked slots", "pass"],
+      ["CRIT-009", "Availability projection excludes closed/holiday days", "pass"],
+      ["CRIT-010", "Slot timezone stored as IANA; serialized as UTC", "pass"],
+      ["CRIT-011", "DST transition window produces no orphaned slots", "pass"],
+      ["CRIT-012", "Recurring template materializes 90 days forward", "pass"],
+      ["CRIT-013", "Template edit re-materializes future slots only", "pass"],
+      ["CRIT-014", "Audit log row written for every slot mutation", "pass"],
+      ["CRIT-015", "RBAC: only schedulers + admins may write", "pass"],
+      ["CRIT-016", "P95 read latency < 80ms over 30-day projection", "pass"]
+    ],
+    findings: [],
+    audit: [
+      ["2026-05-11T05:12Z", "fix", "Dispatched: 2 agents on track w1-slot-inventory"],
+      ["2026-05-11T05:48Z", "fix", "Progress 7/16 — 44% on criteria-set"],
+      ["2026-05-11T06:20Z", "fix", "Progress 13/16 — DST & recurring template still red"],
+      ["2026-05-11T06:42Z", "fix", "Complete: 16/16 GREEN — handed to audit-sae"],
+      ["2026-05-11T07:01Z", "ok",  "SAE-0024 approved — 0 findings"],
+      ["2026-05-11T07:14Z", "ok",  "Merged swarm/w1-slot-inventory → trunk @ 2d18e904"]
+    ]
+  },
+
+  "w1-provider-schedule": {
+    summary: "Wraps slot inventory with the provider's working-pattern view: weekly templates, time-off, on-call swaps. Two audit findings around timezone math forced a fix cycle before merge.",
+    criteria: [
+      ["CRIT-001", "Weekly working pattern (start/end per weekday) per provider", "pass"],
+      ["CRIT-002", "Time-off block hides slots and rejects new bookings", "fixed"],
+      ["CRIT-003", "On-call swap: provider A's slots are reassigned to B for the window", "pass"],
+      ["CRIT-004", "Schedule view returns merged template + exceptions", "pass"],
+      ["CRIT-005", "Schedule export ICS feed signed and per-provider", "pass"],
+      ["CRIT-006", "Timezone parity: provider TZ ≠ clinic TZ resolves to clinic TZ for display", "fixed"]
+    ],
+    findings: [
+      {
+        fid: "FND-w1-pSchedule-01",
+        what: "Time-off block did not invalidate already-issued availability cache; UI showed bookable slots inside time-off windows for up to 5 minutes.",
+        fix: "Added explicit cache.invalidate(provider:slots:{id}) inside time-off mutation handler; covered by new integration test.",
+        resolved: true,
+        resolvedAt: "2026-05-11T08:30Z"
+      },
+      {
+        fid: "FND-w1-pSchedule-02",
+        what: "Provider in America/Phoenix vs clinic in America/Denver showed off-by-1h schedules during DST observance week.",
+        fix: "Normalize at projection time to clinic TZ, not provider TZ. Added 6 DST golden-file tests across 4 TZ pairs.",
+        resolved: true,
+        resolvedAt: "2026-05-11T08:30Z"
+      }
+    ],
+    audit: [
+      ["2026-05-11T05:12Z", "fix", "Dispatched: 2 agents on track w1-provider-schedule"],
+      ["2026-05-11T07:30Z", "fix", "Complete: 6/6 GREEN — handed to audit-sae"],
+      ["2026-05-11T07:54Z", "rej", "SAE-0025 REJECTED — 2 findings (cache, TZ)"],
+      ["2026-05-11T08:00Z", "fix", "Fix-dispatch: 1 fixer agent assigned"],
+      ["2026-05-11T08:30Z", "fix", "Fix complete: 2 findings resolved @ 94c2bb01"],
+      ["2026-05-11T08:48Z", "ok",  "SAE-0026 approved — 0 findings"],
+      ["2026-05-11T09:02Z", "ok",  "Merged swarm/w1-provider-schedule → trunk @ f0eb4a23"]
+    ]
+  },
+
+  "w2-book-appointment": {
+    summary: "The heart of phase-2 — patient/provider booking, conflict checks, capacity decrement, hold-then-confirm semantics. Largest single track in the program (35 criteria) and the source of the 4-finding fix cycle in wave 2.",
+    criteria: [
+      ["CRIT-001", "Book against an open slot decrements capacity by 1", "pass"],
+      ["CRIT-002", "Booking returns deterministic appointment id (uuidv7)", "pass"],
+      ["CRIT-003", "Booking is rejected when slot capacity = 0", "pass"],
+      ["CRIT-004", "Booking is rejected against soft-deleted slot", "pass"],
+      ["CRIT-005", "Booking against past slot rejected with code SLOT_IN_PAST", "pass"],
+      ["CRIT-006", "Hold(60s) → confirm completes; hold expiry auto-releases capacity", "fixed"],
+      ["CRIT-007", "Double-confirm of held appointment is idempotent", "pass"],
+      ["CRIT-008", "Concurrent confirm: last writer wins; capacity invariant holds", "fixed"],
+      ["CRIT-009", "Patient cannot hold > 3 concurrent slots", "pass"],
+      ["CRIT-010", "Eligibility (insurance, age) is checked at confirm-time, not hold-time", "pass"],
+      ["CRIT-011", "Insurance plan mismatch rejected with INELIGIBLE_PLAN + ref", "pass"],
+      ["CRIT-012", "Patient timezone respected for display only; storage is UTC", "pass"],
+      ["CRIT-013", "Confirmation emits AppointmentBooked domain event", "pass"],
+      ["CRIT-014", "Event contains v=1 schema; replay-safe", "pass"],
+      ["CRIT-015", "Audit row for hold, confirm, expire, cancel", "pass"],
+      ["CRIT-016", "RBAC: schedulers may book on behalf of patient; patients self-only", "fixed"],
+      ["CRIT-017", "Booking respects clinic blackout windows", "pass"],
+      ["CRIT-018", "Booking respects provider time-off (W1 integration)", "pass"],
+      ["CRIT-019", "Reason-for-visit free text capped at 280 chars", "pass"],
+      ["CRIT-020", "Reason-for-visit categorized into ICD-light tags", "pass"],
+      ["CRIT-021", "Sensitive reasons (mental, OBGYN) gate to in-network only", "pass"],
+      ["CRIT-022", "Booking persists referral context if present", "pass"],
+      ["CRIT-023", "Booking links to encounter shell on confirm", "pass"],
+      ["CRIT-024", "Encounter shell is removable if appointment cancels before T-24h", "pass"],
+      ["CRIT-025", "Confirmation triggers notification fan-out (email, SMS, push)", "pass"],
+      ["CRIT-026", "Notification opt-outs respected per channel", "pass"],
+      ["CRIT-027", "Booking endpoint OpenAPI matches integration tests", "pass"],
+      ["CRIT-028", "P95 latency for confirm < 250ms at 50 rps", "fixed"],
+      ["CRIT-029", "P99 latency for confirm < 600ms at 50 rps", "pass"],
+      ["CRIT-030", "Error envelope conforms to /docs/errors.md", "pass"],
+      ["CRIT-031", "All 4xx responses include actionable hint field", "pass"],
+      ["CRIT-032", "All 5xx responses include trace id", "pass"],
+      ["CRIT-033", "Booking is fully scriptable via CLI (devx)", "pass"],
+      ["CRIT-034", "Smoke test: 100-patient booking storm passes", "pass"],
+      ["CRIT-035", "Smoke test: 0 capacity violations across 10k synthetic bookings", "pass"]
+    ],
+    findings: [
+      {
+        fid: "FND-w2-book-01",
+        what: "Hold-expiry job released capacity but did not delete the orphan hold row; subsequent re-hold of same slot saw stale row and rejected with HOLD_LIMIT_EXCEEDED.",
+        fix: "Move hold deletion into the same transaction as capacity restore. Added 'orphan-hold sweep' job as backstop.",
+        resolved: true, resolvedAt: "2026-05-11T14:55Z"
+      },
+      {
+        fid: "FND-w2-book-02",
+        what: "Race between two patients confirming the same single-capacity slot: both saw capacity=1 in SELECT, both decremented, capacity went to -1.",
+        fix: "Wrapped capacity decrement in SELECT ... FOR UPDATE within the confirm transaction. Added concurrency test (50 confirms × 1-cap slot).",
+        resolved: true, resolvedAt: "2026-05-11T14:55Z"
+      },
+      {
+        fid: "FND-w2-book-03",
+        what: "Scheduler-acting-on-behalf path skipped the eligibility check entirely; bookings to ineligible plans went through with status CONFIRMED.",
+        fix: "Removed the `if (caller.isStaff) skipEligibility` short-circuit. Staff override now requires explicit `override_reason` field, audited.",
+        resolved: true, resolvedAt: "2026-05-11T14:55Z"
+      },
+      {
+        fid: "FND-w2-book-04",
+        what: "P95 confirm latency at 50 rps was 410ms — over the 250ms target. Root cause: synchronous notification fan-out inside confirm transaction.",
+        fix: "Moved notification publish to outbox table + async worker. New P95: 178ms at 50 rps, P99: 412ms.",
+        resolved: true, resolvedAt: "2026-05-11T14:55Z"
+      }
+    ],
+    audit: [
+      ["2026-05-11T10:45Z", "fix", "Dispatched: 2 agents on track w2-book-appointment"],
+      ["2026-05-11T12:00Z", "fix", "Progress 28/35 — concurrency and perf still red"],
+      ["2026-05-11T12:48Z", "fix", "Complete: 35/35 GREEN — handed to audit-sae"],
+      ["2026-05-11T13:21Z", "rej", "SAE-0027 REJECTED — 4 findings (orphan-hold, race, eligibility, perf)"],
+      ["2026-05-11T13:30Z", "fix", "Fix-dispatch: 1 fixer agent assigned"],
+      ["2026-05-11T14:55Z", "fix", "Fix complete: 4 findings resolved @ 8ee21043"],
+      ["2026-05-11T15:30Z", "ok",  "SAE-0028 approved — 0 findings"],
+      ["2026-05-11T15:48Z", "ok",  "Merged swarm/w2-book-appointment → trunk @ 47b9e2ad"]
+    ]
+  },
+
+  "w4-reschedule-appointment": {
+    summary: "Reschedule = cancel + book in one atomic motion. Sounds trivial, contained the worst audit cycle in phase-2: 8 findings, almost all around state-machine edge cases between hold/confirm and the donor/recipient slot.",
+    criteria: [
+      ["CRIT-001", "Reschedule moves appointment to new slot; old slot capacity restored", "pass"],
+      ["CRIT-002", "Reschedule preserves appointment id (no new id minted)", "pass"],
+      ["CRIT-003", "Reschedule preserves clinical notes & encounter shell linkage", "pass"],
+      ["CRIT-004", "Reschedule fails atomically if new slot full (old slot untouched)", "fixed"],
+      ["CRIT-005", "Reschedule from past appointment is rejected", "pass"],
+      ["CRIT-006", "Reschedule to past slot is rejected", "pass"],
+      ["CRIT-007", "Cross-provider reschedule allowed only if specialty matches", "fixed"],
+      ["CRIT-008", "Cross-clinic reschedule requires referral context", "fixed"],
+      ["CRIT-009", "Reschedule within T-2h triggers manager notification", "pass"],
+      ["CRIT-010", "Reschedule emits AppointmentRescheduled event (not Cancel+Book)", "pass"],
+      ["CRIT-011", "Event includes oldSlotId + newSlotId", "pass"],
+      ["CRIT-012", "Concurrent reschedule of same appointment is serialized", "fixed"],
+      ["CRIT-013", "Reschedule chain (A→B→C) keeps appointment.firstSlotId", "pass"],
+      ["CRIT-014", "Reschedule count ≥ 3 flags appointment for scheduler review", "pass"],
+      ["CRIT-015", "Waitlist auto-fill triggers on slot capacity restore", "fixed"],
+      ["CRIT-016", "No-show policy clock resets on confirmed reschedule", "pass"],
+      ["CRIT-017", "Insurance re-verification on cross-network reschedule", "fixed"],
+      ["CRIT-018", "Reason-for-visit carries through unchanged unless explicit edit", "pass"],
+      ["CRIT-019", "Reschedule reason captured as enum (patient/provider/clinic/system)", "pass"],
+      ["CRIT-020", "Audit log shows full chain with reasons", "pass"],
+      ["CRIT-021", "P95 reschedule latency < 350ms at 30 rps", "fixed"],
+      ["CRIT-022", "Smoke test: 1k reschedule storm produces 0 orphan holds", "fixed"]
+    ],
+    findings: [
+      { fid: "FND-w4-resch-01", what: "If new slot booking failed mid-flight (e.g. eligibility), the old slot capacity was already restored, leaving the appointment with no slot for ~80ms.", fix: "Wrap reschedule in single transaction; restore capacity only after new booking commits. Added rollback test.", resolved: true, resolvedAt: "2026-05-12T00:50Z" },
+      { fid: "FND-w4-resch-02", what: "Specialty match used string equality; 'cardiology' vs 'Cardiology' failed; staff worked around by lowercasing manually.", fix: "Canonicalize specialty IDs at write-time. Migrated existing data via backfill script with dry-run + audit row.", resolved: true, resolvedAt: "2026-05-12T00:50Z" },
+      { fid: "FND-w4-resch-03", what: "Cross-clinic reschedule without referral silently succeeded if requester had multi-clinic role.", fix: "Made referral check unconditional; multi-clinic role no longer bypasses. Added 6 RBAC matrix tests.", resolved: true, resolvedAt: "2026-05-12T00:50Z" },
+      { fid: "FND-w4-resch-04", what: "Two reschedule attempts on same appointment from different sessions could both proceed, resulting in two AppointmentRescheduled events with conflicting newSlotId.", fix: "Optimistic-lock on appointment.version. Second attempt now fails with CONFLICT (412).", resolved: true, resolvedAt: "2026-05-12T00:50Z" },
+      { fid: "FND-w4-resch-05", what: "Waitlist auto-fill fired only on cancel, not on reschedule's implicit cancel side.", fix: "Emit AppointmentSlotFreed domain event from inside reschedule transaction; waitlist subscribes to that, not Cancel.", resolved: true, resolvedAt: "2026-05-12T00:50Z" },
+      { fid: "FND-w4-resch-06", what: "Cross-network reschedule did not re-run insurance verification; patient could land in out-of-network appointment with stale 'covered' badge.", fix: "Insurance check now runs on every reschedule when payer.networkId changes. Added cache-bust + 4 verification tests.", resolved: true, resolvedAt: "2026-05-12T00:50Z" },
+      { fid: "FND-w4-resch-07", what: "P95 latency at 30 rps was 612ms because reschedule held two slot rows + appointment row in same TX for the full notification fan-out.", fix: "Reused W2's outbox pattern; notification publish deferred. New P95: 218ms.", resolved: true, resolvedAt: "2026-05-12T00:50Z" },
+      { fid: "FND-w4-resch-08", what: "1k storm test produced 7 orphan holds when a reschedule's first leg expired the hold but the second leg's failure path didn't sweep it.", fix: "Reuse W2's orphan-hold sweep job; verified 0 orphans across 10k synthetic reschedules.", resolved: true, resolvedAt: "2026-05-12T00:50Z" }
+    ],
+    audit: [
+      ["2026-05-11T23:30Z", "fix", "Dispatched: 1 agent on track w4-reschedule-appointment"],
+      ["2026-05-12T00:08Z", "fix", "Complete: 22/22 GREEN — handed to audit-sae"],
+      ["2026-05-12T00:24Z", "rej", "SAE-0033 REJECTED — 8 findings (state, RBAC, perf, orphans)"],
+      ["2026-05-12T00:28Z", "fix", "Fix-dispatch: 1 fixer agent assigned"],
+      ["2026-05-12T00:50Z", "fix", "Fix complete: 8 findings resolved"],
+      ["2026-05-12T01:15Z", "ok",  "SAE-0034 approved — 0 findings"],
+      ["2026-05-12T01:30Z", "ok",  "Merged swarm/w4-reschedule-appointment → trunk @ (see feed)"]
+    ]
+  },
+
+  "w5-materialize-care-plan": {
+    summary: "Convert an approved care plan into bookable appointment series (e.g. 8 sessions, weekly, with same provider). Currently sitting at AUDITED with 5 open findings — the manager has not yet dispatched a fix cycle.",
+    criteria: [
+      ["CRIT-001", "Care plan template materializes N appointments at cadence X", "pass"],
+      ["CRIT-002", "Materialization respects provider availability (W1)", "pass"],
+      ["CRIT-003", "Materialization atomic: all-or-nothing booking", "fail"],
+      ["CRIT-004", "Failed materialization rolls back partial bookings", "fail"],
+      ["CRIT-005", "Materialized appointments linked to care plan id", "pass"],
+      ["CRIT-006", "Cancel care plan cascades to future appointments only", "pass"],
+      ["CRIT-007", "Reschedule one in series does not break the chain", "fail"],
+      ["CRIT-008", "Care plan progress reflects merged completed/total", "pass"],
+      ["CRIT-009", "Audit row per materialization + cascade", "pass"],
+      ["CRIT-010", "P95 materialize 8-appt plan < 400ms", "fail"],
+      ["CRIT-011", "Smoke: 100 care plans × avg 6 appts → 0 capacity violations", "fail"]
+    ],
+    findings: [
+      { fid: "FND-w5-careplan-01", what: "Materialization is currently sequential — if appt 5 of 8 fails, appts 1-4 are already committed and remain bookable.", fix: null, resolved: false },
+      { fid: "FND-w5-careplan-02", what: "Rollback path exists but doesn't honor outbox events that have already been published for appts 1-4.", fix: null, resolved: false },
+      { fid: "FND-w5-careplan-03", what: "Reschedule of appt-3-of-8 leaves care_plan.next_appointment_id pointing to a slot that may now be in the past.", fix: null, resolved: false },
+      { fid: "FND-w5-careplan-04", what: "8-appt materialize P95 measured at 1.1s — 2.75x over target. Each appointment is its own confirm() call.", fix: null, resolved: false },
+      { fid: "FND-w5-careplan-05", what: "Smoke produced 12 capacity violations because materialize doesn't take SELECT FOR UPDATE on the underlying slot rows.", fix: null, resolved: false }
+    ],
+    audit: [
+      ["2026-05-12T03:00Z", "fix", "Dispatched: 1 agent on track w5-materialize-care-plan"],
+      ["2026-05-12T05:43Z", "fix", "Complete: 11/11 GREEN (worker self-report) — handed to audit-sae"],
+      ["2026-05-12T08:12Z", "rej", "SAE-0036 REJECTED — 5 findings (atomicity x2, reschedule, perf, race)"]
+    ]
+  },
+
+  "w5-spec-adherence-batch-1": {
+    summary: "Batch sub-track spun up from SAE-0037 manager review: tighten 5 spec-adherence criteria that drifted during W2 fix cycle. Currently in flight under harness=claude; first commit rejected at review.",
+    criteria: [
+      ["CRIT-001", "Booking error envelope conforms to /docs/errors.md (W2 regression)", "pending"],
+      ["CRIT-002", "AppointmentBooked event schema v=1 (no v=2 leak from W4)", "pending"],
+      ["CRIT-003", "Audit row mandatory fields all populated (5/19 fields nullable in W2)", "pending"],
+      ["CRIT-004", "RBAC matrix matches /docs/rbac.md exactly (W4 added override path)", "pending"],
+      ["CRIT-005", "P99 confirm latency annotated in trace as 'pure-write' span", "pending"]
+    ],
+    findings: [],
+    audit: [
+      ["2026-05-12T05:43Z", "fix", "Dispatched: 1 agent on track w5-spec-adherence-batch-1"],
+      ["2026-05-12T10:45Z", "rej", "Manager review of first commit — verdict: rejected. Re-dispatched."]
+    ]
+  }
+};
+
+/* Fallback for tracks without explicit details — minimal scaffold from row data */
+function detailsFor(track) {
+  if (TRACK_DETAILS[track.id]) return TRACK_DETAILS[track.id];
+  return {
+    summary: "Detail capture for this track was deferred — surface-level metrics only. Manager has not flagged it for write-up.",
+    criteria: Array.from({ length: track.criteria }, (_, i) =>
+      [`CRIT-${String(i + 1).padStart(3, '0')}`,
+       `Criterion ${i + 1} of ${track.criteria} — see /spec/${track.req}.md`,
+       track.status === 'merged' || track.status === 'complete' ? 'pass' : 'pending']
+    ),
+    findings: [],
+    audit: [
+      [track.merged || DATA.generatedAt, "fix", `Track ${track.id} — status ${track.status}`]
+    ]
+  };
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+const DATA = JSON.parse(document.getElementById('swarm-data').textContent);
+
+// ----- Header timestamp -----
+(function () {
+  const d = new Date(DATA.generatedAt);
+  const opts = { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' };
+  document.getElementById('gen-ts').textContent =
+    'Generated ' + new Intl.DateTimeFormat('en-US', opts).format(d) + ' UTC';
+})();
+
+// ----- KPI strip -----
+(function renderKPIs() {
+  const k = DATA.kpis;
+  const wavePct = Math.round((k.wavesClosed / k.wavesTotal) * 100);
+  const critPct = Math.round((k.criteriaDelivered / k.criteriaTotal) * 100);
+  const cards = [
+    { kind: 'success', label: 'Waves closed',     value: k.wavesClosed,        total: '/ ' + k.wavesTotal,
+      meta: '<b>' + (k.wavesTotal - k.wavesClosed) + '</b> remaining', bar: wavePct },
+    { kind: 'primary', label: 'Criteria delivered', value: k.criteriaDelivered, total: '/ ' + k.criteriaTotal,
+      meta: '<b>' + critPct + '%</b> of plan', bar: critPct },
+    { kind: 'purple',  label: 'Audit cycles',     value: k.auditCycles,        total: '',
+      meta: 'across closed + active waves' },
+    { kind: 'warning', label: 'Findings ever',    value: k.findings,           total: '',
+      meta: 'all-time, all waves' },
+    { kind: 'danger',  label: 'Fix cycles',       value: k.fixCycles,          total: '',
+      meta: 'rejection → fix → re-audit' }
+  ];
+  document.getElementById('kpi-strip').innerHTML = cards.map(c => `
+    <div class="kpi kpi-${c.kind}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}${c.total ? ' <span class="total">' + c.total + '</span>' : ''}</div>
+      <div class="meta">${c.meta}</div>
+      ${c.bar != null ? `<div class="micro-bar"><div style="width:${c.bar}%"></div></div>` : ''}
+    </div>
+  `).join('');
+})();
+
+// ----- Phase ribbon -----
+(function renderRibbon() {
+  const html = DATA.waves.map(w => `<span class="${w.status}" title="Wave ${w.n} — ${w.status}"></span>`).join('');
+  document.getElementById('phase-ribbon').innerHTML = html;
+})();
+
+// ----- duration helpers -----
+function durationMs(a, b) {
+  if (!a) return null;
+  const end = b ? new Date(b) : new Date(DATA.generatedAt);
+  return end - new Date(a);
+}
+function fmtDur(ms) {
+  if (ms == null) return '—';
+  const m = Math.floor(ms / 60000);
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h === 0) return mm + 'm';
+  return h + 'h ' + (mm < 10 ? '0' : '') + mm + 'm';
+}
+function fmtClock(ts) {
+  if (!ts) return '—';
+  const m = ts.match(/T(\d{2}):(\d{2})/);
+  return m ? m[1] + ':' + m[2] : ts;
+}
+
+// ----- Gantt -----
+(function renderGantt() {
+  const waves = DATA.waves.filter(w => w.start);
+  if (waves.length === 0) return;
+
+  const nowTs = DATA.generatedAt;
+  // Pad timeline 30m on each side
+  let minMs = Math.min(...waves.map(w => +new Date(w.start))) - 30 * 60000;
+  let maxMs = Math.max(...waves.map(w => +new Date(w.end || nowTs))) + 30 * 60000;
+  const span = maxMs - minMs;
+
+  function pctL(ts) { return ((+new Date(ts) - minMs) / span) * 100; }
+
+  // Rows
+  const allWaves = DATA.waves;
+  const rowsHtml = allWaves.map(w => {
+    const pending = !w.start;
+    const lbl = `<div class="lbl"><b>W${w.n}</b></div>`;
+    if (pending) {
+      return lbl + `<div class="gantt-row" style="opacity:.4"></div>`;
+    }
+    const startPct = pctL(w.start);
+    const endPct = pctL(w.end || nowTs);
+    const widthPct = Math.max(endPct - startPct, 1.2);
+    const colors = { 1:'#0a7f29', 2:'#0066cc', 3:'#7700cc', 4:'#ffaa00', 5:'#cc0033' };
+    const color = colors[w.n] || 'var(--neutral-400)';
+    const isLive = w.status === 'in-flight';
+    const dur = fmtDur(durationMs(w.start, w.end));
+    const barCls = isLive ? 'gantt-bar in-flight' : 'gantt-bar';
+    const bg = isLive ? '' : `background:${color};`;
+    return lbl + `
+      <div class="gantt-row">
+        <div class="${barCls}" data-wave="${w.n}" style="left:${startPct}%;width:${widthPct}%;${bg}">
+          <span>W${w.n}</span><span class="dur">${dur}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('gantt-rows').innerHTML = rowsHtml;
+
+  // Bar hover popover
+  const pop = document.getElementById('gantt-pop');
+  function statusClass(s) {
+    if (s === 'in-flight') return 'inflight';
+    if (s === 'audited') return 'audited';
+    if (s === 'complete') return 'complete';
+    return 'merged';
+  }
+  function popHtml(wave) {
+    const tracks = DATA.tracks.filter(t => t.wave === wave.n);
+    const dur = fmtDur(durationMs(wave.start, wave.end));
+    const when = fmtClock(wave.start) + ' → ' + (wave.end ? fmtClock(wave.end) : 'now');
+    const lines = tracks.length === 0
+      ? `<li style="cursor:default;color:var(--fg-faint);font-style:italic">no tracks dispatched</li>`
+      : tracks.map(t => `
+          <li class="${statusClass(t.status)}" data-id="${t.id}">
+            <span class="dot"></span>
+            <span class="tid">${t.id.replace(/^w\d+-/, '')}</span>
+            <span class="meta">${t.criteria}c${t.findings > 0 ? ' <span class="f">' + t.findings + 'f</span>' : ''}</span>
+          </li>
+        `).join('');
+    return `
+      <div class="pop-head">
+        <div>
+          <div class="wlbl">WAVE ${String(wave.n).padStart(2,'0')} · ${wave.status}</div>
+          <div class="when">${when} · ${dur}${wave.agents ? ' · ' + wave.agents + ' agt' : ''}</div>
+        </div>
+      </div>
+      <ul>${lines}</ul>
+      <div class="pop-foot">click a track for full detail →</div>
+    `;
+  }
+
+  function showPop(barEl, wave) {
+    pop.innerHTML = popHtml(wave);
+    pop.classList.add('open');
+    const r = barEl.getBoundingClientRect();
+    // Initial position (will adjust after measure)
+    pop.style.left = '0px'; pop.style.top = '0px';
+    requestAnimationFrame(() => {
+      const popR = pop.getBoundingClientRect();
+      const vw = window.innerWidth, vh = window.innerHeight;
+      let left = r.left + r.width / 2 - popR.width / 2;
+      left = Math.max(12, Math.min(vw - popR.width - 12, left));
+      let top = r.top - popR.height - 10;
+      if (top < 12) top = r.bottom + 10;
+      pop.style.left = left + 'px';
+      pop.style.top = top + 'px';
+    });
+    // Wire row clicks
+    pop.querySelectorAll('li[data-id]').forEach(li => {
+      li.addEventListener('click', () => {
+        hidePop();
+        Drawer.open(li.dataset.id);
+      });
+    });
+  }
+  let hideTimer = null;
+  function hidePop() {
+    clearTimeout(hideTimer);
+    pop.classList.remove('open');
+  }
+  function scheduleHide() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hidePop, 180);
+  }
+
+  document.querySelectorAll('.gantt-bar[data-wave]').forEach(bar => {
+    const waveN = +bar.dataset.wave;
+    const wave = DATA.waves.find(w => w.n === waveN);
+    bar.addEventListener('mouseenter', () => { clearTimeout(hideTimer); showPop(bar, wave); });
+    bar.addEventListener('mouseleave', scheduleHide);
+  });
+  pop.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+  pop.addEventListener('mouseleave', scheduleHide);
+
+  // Axis ticks — every hour, day separator on date change
+  const axis = document.getElementById('gantt-axis');
+  const startDate = new Date(minMs);
+  startDate.setUTCMinutes(0, 0, 0);
+  startDate.setUTCHours(startDate.getUTCHours() + 1);
+  let lastDay = null;
+  const tickHtml = [];
+  for (let t = +startDate; t < maxMs; t += 3600000) {
+    const d = new Date(t);
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const day = d.getUTCDate();
+    const left = ((t - minMs) / span) * 100;
+    if (lastDay !== null && day !== lastDay) {
+      const dayLabel = ['May ' + day][0];
+      tickHtml.push(`<div class="day-sep" style="left:${left}%">${dayLabel}</div>`);
+    } else if (hh % 2 === 0) {
+      tickHtml.push(`<div class="tick" style="left:${left}%">${hh}:00</div>`);
+    }
+    lastDay = day;
+  }
+  axis.innerHTML = tickHtml.join('');
+
+  // Meta
+  const closed = waves.filter(w => w.status === 'closed');
+  const live = waves.find(w => w.status === 'in-flight');
+  const totalClosedMs = closed.reduce((s, w) => s + durationMs(w.start, w.end), 0);
+  const avgMs = closed.length ? totalClosedMs / closed.length : 0;
+  let metaText = closed.length + ' closed · avg ' + fmtDur(avgMs);
+  if (live) metaText += ' · W' + live.n + ' running ' + fmtDur(durationMs(live.start, null));
+  document.getElementById('gantt-meta').textContent = metaText;
+})();
+
+// ----- Wave grid -----
+(function renderWaves() {
+  const html = DATA.waves.map(w => {
+    const pct = w.total > 0 ? Math.round((w.delivered / w.total) * 100) : 0;
+    const statusKey = w.status === 'in-flight' ? 'inflight' : w.status;
+    const statusLabel = w.status === 'in-flight' ? 'in-flight' : w.status;
+    const dur = w.start ? fmtDur(durationMs(w.start, w.end)) : '—';
+    const durSuffix = w.status === 'in-flight' ? ' running' : '';
+    const agt = w.agents || 0;
+    return `
+      <div class="wave-card ${w.status}">
+        <div class="row1">
+          <span class="num">WAVE <b>${String(w.n).padStart(2,'0')}</b></span>
+          <span class="pill ${statusKey}"><span class="glyph"></span>${statusLabel}</span>
+        </div>
+        <div class="sub">${w.delivered}<span class="denom"> / ${w.total}</span></div>
+        <div class="stats">
+          <span class="stat"><b>${w.tracks}</b><span class="k">trk</span></span>
+          <span class="stat agt"><b>${agt}</b><span class="k">agt</span></span>
+          <span class="stat"><b>${w.audits}</b><span class="k">audit</span></span>
+          <span class="stat"><b>${w.findings}</b><span class="k">find</span></span>
+          <span class="stat"><b>${w.fixCycles}</b><span class="k">fix</span></span>
+          <span class="stat dur"><b>${dur}</b></span>
+        </div>
+        <div class="progress"><div style="width:${pct}%"></div></div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('wave-grid').innerHTML = html;
+})();
+
+// ----- Track table -----
+(function renderTracks() {
+  const tbody = document.querySelector('#track-table tbody');
+  let rows = DATA.tracks.slice();
+  let sortKey = 'wave';
+  let sortDir = 'asc';
+
+  function statusPill(s) {
+    const map = {
+      'merged':    ['merged', 'merged'],
+      'complete':  ['complete', 'complete'],
+      'audited':   ['audited', 'audited'],
+      'in-flight': ['inflight', 'in-flight'],
+      'pending':   ['pending', 'pending']
+    };
+    const [cls, label] = map[s] || ['pending', s];
+    return `<span class="pill ${cls}"><span class="glyph"></span>${label}</span>`;
+  }
+
+  function fmtTs(ts) {
+    if (!ts) return '<span class="empty">— not merged</span>';
+    return ts.replace('T', ' ').replace('Z', 'Z');
+  }
+
+  function paint() {
+    rows.sort((a, b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (sortKey === 'merged') {
+        av = av || '9999';
+        bv = bv || '9999';
+      }
+      if (typeof av === 'string' && typeof bv === 'string') {
+        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+      return sortDir === 'asc' ? (av - bv) : (bv - av);
+    });
+
+    tbody.innerHTML = rows.map(t => `
+      <tr data-id="${t.id}" tabindex="0">
+        <td><span class="wave-tag">W${t.wave}</span></td>
+        <td class="mono id-cell">${t.id}</td>
+        <td class="mono muted">${t.req}</td>
+        <td class="crit">${t.criteria}</td>
+        <td>${statusPill(t.status)}</td>
+        <td class="audits">${t.audits}</td>
+        <td class="${t.findings > 0 ? 'findings findings-pos' : 'findings'}">${t.findings}</td>
+        <td class="merged-ts ${t.merged ? '' : 'empty'}">${fmtTs(t.merged)}</td>
+      </tr>
+    `).join('');
+
+    tbody.querySelectorAll('tr').forEach(tr => {
+      tr.addEventListener('click', () => openDrawer(tr.dataset.id));
+      tr.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDrawer(tr.dataset.id); }
+      });
+    });
+
+    document.querySelectorAll('#track-table th.sort').forEach(th => {
+      th.classList.remove('sorted');
+      const arrow = th.querySelector('.arrow');
+      if (arrow) arrow.textContent = '↑';
+      if (th.dataset.key === sortKey) {
+        th.classList.add('sorted');
+        if (arrow) arrow.textContent = sortDir === 'asc' ? '↑' : '↓';
+      }
+    });
+  }
+
+  document.querySelectorAll('#track-table th.sort').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (sortKey === key) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortKey = key;
+        sortDir = 'asc';
+      }
+      paint();
+    });
+  });
+
+  document.getElementById('track-count').textContent = rows.length + ' rows';
+  paint();
+})();
+
+// ----- Drawer -----
+const Drawer = (function () {
+  const root = document.getElementById('drawer');
+  const back = document.getElementById('drawer-backdrop');
+  const body = document.getElementById('drawer-body');
+
+  function statusPill(s) {
+    const map = {
+      'merged': 'merged', 'complete': 'complete', 'audited': 'audited',
+      'in-flight': 'inflight', 'pending': 'pending'
+    };
+    return `<span class="pill ${map[s] || 'pending'}"><span class="glyph"></span>${s}</span>`;
+  }
+
+  function close() {
+    root.classList.remove('open');
+    back.classList.remove('open');
+  }
+  back.addEventListener('click', close);
+  document.getElementById('drawer-close').addEventListener('click', close);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  function open(id) {
+    const track = DATA.tracks.find(t => t.id === id);
+    if (!track) return;
+    const wave = DATA.waves.find(w => w.n === track.wave);
+    const d = detailsFor(track);
+
+    document.getElementById('dr-wave').textContent = 'Wave ' + track.wave + ' · ' + (wave ? wave.status : '');
+    document.getElementById('dr-track').textContent = track.id;
+    document.getElementById('dr-title').textContent = track.id;
+    document.getElementById('dr-req').textContent = track.req;
+
+    const passCount = d.criteria.filter(c => c[2] === 'pass' || c[2] === 'fixed').length;
+    const findingsOpen = d.findings.filter(f => !f.resolved).length;
+    const findingsResolved = d.findings.filter(f => f.resolved).length;
+
+    document.getElementById('dr-row').innerHTML = `
+      ${statusPill(track.status)}
+      <span class="stat" style="font-family:var(--mono);font-size:12px;color:var(--fg-muted)">
+        <b style="color:var(--fg);font-weight:500">${passCount}</b>/${d.criteria.length} criteria
+      </span>
+      <span class="stat" style="font-family:var(--mono);font-size:12px;color:var(--fg-muted)">
+        <b style="color:${findingsOpen ? 'var(--danger)' : 'var(--fg)'};font-weight:500">${d.findings.length}</b> findings${findingsOpen ? ' (' + findingsOpen + ' open)' : findingsResolved ? ' (all resolved)' : ''}
+      </span>
+      <span class="stat" style="font-family:var(--mono);font-size:12px;color:var(--fg-muted)">
+        <b style="color:var(--fg);font-weight:500">${track.audits}</b> audit${track.audits === 1 ? '' : 's'}
+      </span>
+      ${track.merged ? `<span class="stat" style="font-family:var(--mono);font-size:12px;color:var(--fg-muted)">merged <b style="color:var(--fg);font-weight:500">${track.merged.replace('T',' ').replace('Z','Z')}</b></span>` : ''}
+    `;
+
+    // Body sections
+    const critItems = d.criteria.map(([cid, desc, st]) => {
+      const cls = st === 'fail' ? 'fail' : st === 'pending' ? 'pending' : st === 'fixed' ? 'fixed' : '';
+      const tag = st === 'fail' ? 'FAIL' : st === 'pending' ? 'PEND' : st === 'fixed' ? 'FIXED' : 'PASS';
+      return `<li class="${cls}">
+        <span class="cid">${cid}</span>
+        <span class="glyph"></span>
+        <span class="desc">${desc}</span>
+        <span class="tag-mini">${tag}</span>
+      </li>`;
+    }).join('');
+
+    const findingHtml = d.findings.length === 0
+      ? `<p class="summary" style="color:var(--fg-faint);font-style:italic">No audit findings recorded for this track.</p>`
+      : d.findings.map(f => `
+        <div class="finding ${f.resolved ? 'resolved' : ''}">
+          <div class="top">
+            <span class="fid">${f.fid}</span>
+            <span class="verdict-tag ${f.resolved ? 'resolved' : 'open'}">${f.resolved ? 'resolved' : 'open'}</span>
+          </div>
+          <p class="what">${f.what}</p>
+          ${f.fix ? `<p class="fix"><b>FIX</b> &nbsp; ${f.fix}</p>` : `<p class="fix" style="color:var(--fg-faint);font-style:italic">Resolution pending — no fix dispatched yet.</p>`}
+        </div>
+      `).join('');
+
+    const auditHtml = d.audit.map(([ts, kind, what]) => {
+      const cls = kind === 'ok' ? 'ok' : kind === 'rej' ? 'rej' : 'fix';
+      const tsShort = ts.replace('T', ' ').replace('Z', 'Z');
+      return `<li class="${cls}"><span class="ts">${tsShort}</span><span class="what">${what}</span></li>`;
+    }).join('');
+
+    body.innerHTML = `
+      <section>
+        <h3>Summary</h3>
+        <p class="summary">${d.summary}</p>
+      </section>
+
+      <section>
+        <h3>Acceptance criteria <span class="count">${passCount}/${d.criteria.length} passing</span></h3>
+        <ul class="crit-list">${critItems}</ul>
+      </section>
+
+      <section>
+        <h3>Findings &amp; resolutions <span class="count">${d.findings.length} total${findingsOpen ? ' · ' + findingsOpen + ' open' : ''}</span></h3>
+        ${findingHtml}
+      </section>
+
+      <section>
+        <h3>Audit history <span class="count">${d.audit.length} events</span></h3>
+        <ul class="audit-log">${auditHtml}</ul>
+      </section>
+    `;
+
+    body.scrollTop = 0;
+    root.classList.add('open');
+    back.classList.add('open');
+  }
+
+  return { open };
+})();
+
+function openDrawer(id) { Drawer.open(id); }
+
+// ----- Activity feed -----
+(function renderFeed() {
+  const feed = document.getElementById('feed');
+  const items = ACTIVITY.slice(0, 60);
+  document.getElementById('feed-count').textContent = items.length + ' events';
+
+  function fmt(ts) {
+    // 10:45Z
+    const m = ts.match(/T(\d{2}):(\d{2})/);
+    if (!m) return ts;
+    // include short date for older entries
+    const dayMatch = ts.match(/-(\d{2})T/);
+    return m[1] + ':' + m[2] + 'Z';
+  }
+  function fmtDay(ts) {
+    return ts.slice(5, 10); // 05-12
+  }
+
+  let lastDay = null;
+  const html = items.map(([ts, kind, sha, desc, verdict]) => {
+    const day = fmtDay(ts);
+    const dayHeader = (day !== lastDay) ? `<div class="feed-item" style="grid-template-columns:1fr;border-bottom:1px solid var(--border);background:var(--surface-2);padding:6px 16px;"><div class="ts mono" style="color:var(--fg-muted);font-size:11px;letter-spacing:.05em;">${ts.slice(0,10)}</div></div>` : '';
+    lastDay = day;
+
+    // tag-ify [bracketed] tags inside desc
+    let descHtml = desc.replace(/\[([^\]]+)\]/g, '<span class="tag">[$1]</span>');
+    // verdict coloring
+    descHtml = descHtml.replace(/verdict: approved/g, '<span class="verdict-ok">verdict: approved</span>');
+    descHtml = descHtml.replace(/verdict: rejected/g, '<span class="verdict-rej">verdict: rejected</span>');
+
+    const shaHtml = sha ? `<span class="sha">${sha}</span> ` : '';
+
+    return dayHeader + `
+      <div class="feed-item">
+        <span class="ts">${fmt(ts)}</span>
+        <span class="kind ${kind}">${kind}</span>
+        <span class="desc">${shaHtml}${descHtml}</span>
+      </div>
+    `;
+  }).join('');
+
+  feed.innerHTML = html;
+})();
+
+// ----- Containers -----
+(function renderContainers() {
+  const raw = DATA.containers;
+  // colorize STATUS column tokens
+  const colored = raw
+    .replace(/^NAME.*$/m, m => '<span class="h">' + m + '</span>')
+    .replace(/running \([^)]+\)/g, m => '<span class="ok">' + m + '</span>')
+    .replace(/completed \([^)]+\)/g, m => '<span class="warn">' + m + '</span>')
+    .replace(/stalled \([^)]+\)/g, m => '<span class="crit">' + m + '</span>')
+    .replace(/merged \([^)]+\)/g, m => '<span class="muted">' + m + '</span>');
+  document.getElementById('containers').innerHTML = colored;
+})();
+
+// ----- Project burndown -----
+(function renderProjectChart() {
+  const ctx = document.getElementById('project-burndown').getContext('2d');
+  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+
+  // Build actual cumulative-merged series from track merges
+  const totalCriteria = DATA.kpis.criteriaTotal;
+  const merges = DATA.tracks
+    .filter(t => t.merged)
+    .map(t => ({ t: t.merged, n: t.criteria }))
+    .sort((a, b) => a.t.localeCompare(b.t));
+
+  // Start anchor — first dispatch
+  const startTs = '2026-05-11T05:00Z';
+  const actual = [{ x: startTs, y: 0 }];
+  let cum = 0;
+  for (const m of merges) {
+    actual.push({ x: m.t, y: cum });
+    cum += m.n;
+    actual.push({ x: m.t, y: cum });
+  }
+  const lastActual = actual[actual.length - 1];
+  // Extend to "now" with the current value (no movement since last merge)
+  actual.push({ x: DATA.generatedAt, y: cum });
+
+  // Velocity: criteria per ms based on full elapsed
+  const elapsedMs = new Date(DATA.generatedAt) - new Date(startTs);
+  const velocity = cum / elapsedMs; // criteria per ms
+  const remaining = totalCriteria - cum;
+  const etaMs = remaining / velocity;
+  const etaDate = new Date(+new Date(DATA.generatedAt) + etaMs);
+
+  // Projection: from now to ETA at total
+  const projection = [
+    { x: DATA.generatedAt, y: cum },
+    { x: etaDate.toISOString(), y: totalCriteria }
+  ];
+
+  // Plan target line (linear from start to ETA at total) — visual anchor
+  const planTarget = [
+    { x: startTs, y: 0 },
+    { x: etaDate.toISOString(), y: totalCriteria }
+  ];
+
+  // Plot end: 1h past ETA so the marker shows
+  const plotEnd = new Date(+etaDate + 3600000);
+
+  const C_ACTUAL = '#0066cc';
+  const C_PROJ   = '#9aa0ac';
+  const C_TARGET = '#0a7f29';
+
+  const datasets = [
+    {
+      label: 'Plan target',
+      data: planTarget,
+      borderColor: C_TARGET,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [3, 5],
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      tension: 0,
+      fill: false,
+      order: 3
+    },
+    {
+      label: 'Projected (at current velocity)',
+      data: projection,
+      borderColor: C_PROJ,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [6, 4],
+      pointRadius: ctx => ctx.dataIndex === 1 ? 4 : 0,
+      pointHoverRadius: 5,
+      pointBackgroundColor: C_PROJ,
+      pointBorderColor: C_PROJ,
+      tension: 0,
+      fill: false,
+      order: 2
+    },
+    {
+      label: 'Actual',
+      data: actual,
+      borderColor: C_ACTUAL,
+      backgroundColor: 'rgba(0,102,204,0.10)',
+      borderWidth: 2,
+      stepped: true,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      pointBackgroundColor: C_ACTUAL,
+      pointBorderColor: C_ACTUAL,
+      fill: 'origin',
+      tension: 0,
+      order: 1
+    }
+  ];
+
+  document.getElementById('proj-legend').innerHTML = [
+    { c: C_ACTUAL, l: 'actual' },
+    { c: C_PROJ,   l: 'projected' },
+    { c: C_TARGET, l: 'plan target' }
+  ].map(d => `<span><span class="swatch" style="background:${d.c}"></span>${d.l}</span>`).join('');
+
+  // Sub line
+  const pct = Math.round((cum / totalCriteria) * 100);
+  const vph = (velocity * 3600000).toFixed(1); // criteria per hour
+  const etaFmt = etaDate.toISOString().replace('T', ' ').slice(0, 16) + 'Z';
+  const etaFromNowH = Math.round(etaMs / 3600000);
+  document.getElementById('proj-actual').innerHTML =
+    `<b style="color:var(--fg);font-weight:500">${cum}</b> / ${totalCriteria} delivered <span style="color:var(--fg-faint)">(${pct}%)</span>`;
+  document.getElementById('proj-velocity').textContent = `velocity ${vph} criteria/hr`;
+  document.getElementById('proj-eta').innerHTML =
+    `eta <b style="color:var(--fg);font-weight:500">${etaFmt}</b> <span style="color:var(--fg-faint)">(~${etaFromNowH}h)</span>`;
+
+  function gridColor() { return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(15,18,30,0.06)'; }
+  function tickColor() { return isDark() ? '#9aa0ac' : '#666'; }
+
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500 },
+      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15,18,30,0.92)',
+          titleFont: { family: 'Geist Mono', size: 11 },
+          bodyFont: { family: 'Geist Mono', size: 11 },
+          padding: 10,
+          callbacks: {
+            title: items => new Date(items[0].parsed.x).toISOString().replace('T', ' ').slice(0, 16) + 'Z',
+            label: ctx => ctx.dataset.label + ' · ' + Math.round(ctx.parsed.y) + ' / ' + totalCriteria
+          }
+        },
+        annotation: {
+          annotations: {
+            etaLine: {
+              type: 'line',
+              xMin: etaDate.toISOString(),
+              xMax: etaDate.toISOString(),
+              borderColor: C_PROJ,
+              borderWidth: 1,
+              borderDash: [2, 3],
+              label: {
+                display: true,
+                content: 'ETA ' + etaFmt.slice(5, 11) + ' ' + etaFmt.slice(11),
+                position: 'start',
+                yAdjust: -8,
+                backgroundColor: 'transparent',
+                color: tickColor(),
+                font: { family: 'Geist Mono', size: 10, weight: '400' }
+              }
+            },
+            totalLine: {
+              type: 'line',
+              yMin: totalCriteria,
+              yMax: totalCriteria,
+              borderColor: C_TARGET,
+              borderWidth: 1,
+              borderDash: [2, 4]
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          min: startTs,
+          max: plotEnd.toISOString(),
+          time: { unit: 'hour', displayFormats: { hour: 'HH:mm', day: 'MMM d' } },
+          grid: { color: gridColor(), drawBorder: false },
+          ticks: { color: tickColor(), font: { family: 'Geist Mono', size: 10 }, maxRotation: 0, autoSkipPadding: 24 }
+        },
+        y: {
+          min: 0, max: Math.ceil(totalCriteria * 1.05),
+          grid: { color: gridColor(), drawBorder: false },
+          ticks: { color: tickColor(), font: { family: 'Geist Mono', size: 10 }, stepSize: 50 },
+          title: { display: true, text: 'criteria', color: tickColor(), font: { family: 'Geist Mono', size: 10 } }
+        }
+      }
+    }
+  });
+
+  window.addEventListener('theme-change', () => {
+    chart.options.scales.x.grid.color = gridColor();
+    chart.options.scales.y.grid.color = gridColor();
+    chart.options.scales.x.ticks.color = tickColor();
+    chart.options.scales.y.ticks.color = tickColor();
+    chart.options.scales.y.title.color = tickColor();
+    chart.update('none');
+  });
+})();
+
+// ----- Burndown -----
+(function renderChart() {
+  const ctx = document.getElementById('burndown').getContext('2d');
+  const rootStyle = getComputedStyle(document.documentElement);
+  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+
+  function buildDatasets() {
+    return DATA.burndown.waves.map(w => ({
+      label: 'Wave ' + w.n,
+      data: w.points.map(p => ({ x: p[0], y: p[1] })),
+      borderColor: w.color,
+      backgroundColor: w.color,
+      stepped: true,
+      tension: 0,
+      borderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBackgroundColor: w.color,
+      pointBorderColor: w.color,
+      fill: false
+    }));
+  }
+
+  const datasets = buildDatasets();
+
+  // Legend (custom)
+  document.getElementById('chart-legend').innerHTML = datasets.map(d =>
+    `<span><span class="swatch" style="background:${d.borderColor}"></span>${d.label}</span>`
+  ).join('');
+
+  function gridColor() {
+    return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(15,18,30,0.06)';
+  }
+  function tickColor() {
+    return isDark() ? '#9aa0ac' : '#666';
+  }
+
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500 },
+      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15,18,30,0.92)',
+          titleFont: { family: 'Geist Mono', size: 11, weight: '400' },
+          bodyFont: { family: 'Geist Mono', size: 11 },
+          padding: 10,
+          displayColors: true,
+          callbacks: {
+            title: items => {
+              const d = new Date(items[0].parsed.x);
+              return d.toISOString().replace('T',' ').slice(0, 16) + 'Z';
+            },
+            label: ctx => ctx.dataset.label + ' · ' + ctx.parsed.y + ' criteria'
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'hour', displayFormats: { hour: 'MMM d HH:mm' } },
+          grid: { color: gridColor(), drawTicks: false },
+          border: { display: false },
+          ticks: {
+            color: tickColor(),
+            font: { family: 'Geist Mono', size: 11 },
+            maxRotation: 0,
+            autoSkip: true,
+            autoSkipPadding: 24
+          }
+        },
+        y: {
+          beginAtZero: true,
+          suggestedMax: 80,
+          grid: { color: gridColor(), drawTicks: false },
+          border: { display: false },
+          ticks: {
+            color: tickColor(),
+            font: { family: 'Geist Mono', size: 11 },
+            stepSize: 20,
+            padding: 8
+          },
+          title: {
+            display: true,
+            text: 'criteria merged',
+            color: tickColor(),
+            font: { family: 'Geist Mono', size: 11, weight: '400' }
+          }
+        }
+      }
+    }
+  });
+
+  // re-theme chart on toggle
+  window.__rethemeChart = () => {
+    chart.options.scales.x.grid.color = gridColor();
+    chart.options.scales.y.grid.color = gridColor();
+    chart.options.scales.x.ticks.color = tickColor();
+    chart.options.scales.y.ticks.color = tickColor();
+    chart.options.scales.y.title.color = tickColor();
+    chart.update('none');
+  };
+})();
+
+// ----- Theme toggle -----
+(function themeToggle() {
+  const btn = document.getElementById('theme-toggle');
+  const glyph = document.getElementById('theme-toggle-glyph');
+  const label = document.getElementById('theme-toggle-label');
+
+  function apply(mode) {
+    if (mode === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      glyph.textContent = '◑';
+      label.textContent = 'Light';
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      glyph.textContent = '◐';
+      label.textContent = 'Dark';
+    }
+    if (window.__rethemeChart) window.__rethemeChart();
+    try { localStorage.setItem('phase2-theme', mode); } catch (e) {}
+  }
+  let stored = null;
+  try { stored = localStorage.getItem('phase2-theme'); } catch (e) {}
+  if (stored) apply(stored);
+  btn.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    apply(cur === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
+
+</body>
+</html>

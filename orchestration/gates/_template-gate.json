@@ -1,0 +1,20 @@
+{
+  "$comment": "Per-gate field shape, embedded as a reference inside gates.json. Copy a shape into the `gates:` array, fill in the fields, then run `./orchestration/gates/gate-check.sh --list` to confirm it's discoverable. See docs/USER-GUIDE.md §Phase 4 for the authoring workflow.",
+
+  "id": "G.<wave>-<short-name>",
+  "_id_doc": "Stable id; convention is `G.<wave-number>-<short-name>` (e.g. G.wave-1-slots). Manager/captain reference this id in dispatch briefs.",
+
+  "description": "<one-sentence description>",
+  "_description_doc": "Human-readable purpose of the gate. Surfaces in `gate-check.sh --list` output.",
+
+  "requires": ["<track-id-1>", "<track-id-2>"],
+  "_requires_doc": "Predecessor track-ids that must report `[complete:<id>]` before this gate is eligible to run. Empty list = always eligible (e.g. trunk-health gates). The manager checks `requires:` against `origin/swarm/*` completion markers before invoking the gate.",
+
+  "commands": [
+    "pnpm typecheck",
+    "pnpm req-lint",
+    "pnpm check-track-meta-paths",
+    "pnpm test"
+  ],
+  "_commands_doc": "Sequential shell commands. gate-check.sh stops on the first non-zero exit. Typical TypeScript gates chain `pnpm typecheck && pnpm req-lint && pnpm check-track-meta-paths && pnpm test`; wave-specific gates may add `pnpm --filter @charliehealth/<pkg> test:integration` or codegen-current checks."
+}

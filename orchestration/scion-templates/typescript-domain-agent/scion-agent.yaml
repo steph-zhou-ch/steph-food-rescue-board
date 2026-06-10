@@ -1,0 +1,11 @@
+# Scion agent template — typescript-domain-agent
+#
+# Spawns a TypeScript domain-track worker that owns pure business logic
+# under libs/domain/. Forbidden from importing infrastructure (drizzle,
+# pg, @nestjs/*). Used for `domain-*` tracks (e.g. domain-slots,
+# domain-appointments).
+
+schema_version: "1"
+description: "TypeScript domain-track worker — pure business logic under libs/domain/. Forbidden from importing infrastructure."
+agent_instructions: agents.md
+system_prompt: system-prompt.md

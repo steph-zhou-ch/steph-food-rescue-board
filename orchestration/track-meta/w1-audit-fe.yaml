@@ -1,0 +1,43 @@
+track_id: "w1-audit-fe"
+
+agent_class: "spec-adherence-agent"
+
+phase: 4
+wave: 1
+batch: 3
+
+track_summary: |
+  Spec-adherence audit of the frontend tracks (w1-fe-browse-feed,
+  w1-fe-post-form, w1-fe-item-detail). Verifies that UI components
+  match the Figma-linked criteria, that all acceptance criteria have
+  tagged tests, and that the implementation honors the predicates.
+  Read-only — does not modify implementation code.
+
+predecessors:
+  - "w1-fe-browse-feed"
+  - "w1-fe-post-form"
+  - "w1-fe-item-detail"
+
+subscribed_contracts: []
+
+cross_cutting_packs: []
+
+unblocks:
+  - "G.spec-adherence"
+
+deliverables:
+  - "orchestration/reviews/w1-audit-fe.md"
+
+exit_criterion: |
+  Written verdict in orchestration/reviews/ covering all critical/high
+  criteria from REQ-CAP-FE-BROWSE-FEED, REQ-CAP-FE-POST-FORM, and
+  REQ-CAP-FE-ITEM-DETAIL. Each criterion marked PASS, FAIL, or PARTIAL
+  with rationale. Design-linked criteria note fidelity to Figma nodes.
+
+source_of_truth:
+  req_ids:
+    - "REQ-CAP-FE-BROWSE-FEED"
+    - "REQ-CAP-FE-POST-FORM"
+    - "REQ-CAP-FE-ITEM-DETAIL"
+
+execution_mode: hub_mode

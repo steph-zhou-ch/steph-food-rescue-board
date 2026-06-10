@@ -1,0 +1,89 @@
+# orchestration/track-meta/_template-catalog-readiness.yaml
+#
+# Spawn metadata for the catalog-readiness subagent invoked during
+# Phase 2 (Pre-flight). The Captain's Phase 2 loop reads this template
+# to drive a single Agent-tool invocation; nothing here is consumed by
+# Scion. The track-meta lives alongside the worker track-metas to keep
+# the Phase-2 protocol greppable from one place.
+#
+# This is NOT a Scion worker — there is no `agent_class:` matching the
+# registry, no branch, no commit marker. The catalog-readiness-agent
+# runs locally (via Claude Code's Agent tool) and writes its verdict to
+# orchestration/reviews/catalog-readiness-<TS>.md.
+
+# Identifier — used in the verdict file name and any phase-report
+# back-reference. There is exactly one of these per Phase-2 cycle.
+track_id: "catalog-readiness-cycle-<N>"
+
+# The local subagent class. Always `catalog-readiness-agent` for this
+# track. Concretely the Captain's Phase 2 prompt invokes:
+#   Agent({
+#     subagent_type: "general-purpose",
+#     prompt: "<rule-pack inlined> <directives>"
+#   })
+# The rule pack lives at:
+#   orchestration/prompts/rule-packs/catalog-readiness-agent.md
+agent_class: "catalog-readiness-agent"
+
+# Methodology phase. Always 2 for this track.
+phase: 2
+
+# Wave number this catalog cycle is gating. The catalog-readiness audit
+# may be re-run between waves if the catalog has been edited; record
+# which wave's pre-flight this run is for.
+wave: 0
+
+# Cycle counter within Phase 2. Phase 2 caps at 3 cycles before
+# escalation per docs/USER-GUIDE.md §Phase 2.
+cycle: 1
+
+# 1-2 sentences naming what scope this audit covers. If the catalog has
+# only been partially edited since the last `ready` verdict, scope can
+# narrow to the changed REQs (note that in the prompt). Default scope
+# is "every file under requirements/".
+audit_scope: |
+  Audit the full REQ catalog under requirements/ against REQ Spec v3
+  + the service-prd wave plan. First-cycle audit before Wave <N>
+  dispatch.
+
+# Documents the agent must read before issuing a verdict. The Captain's
+# loop materializes this list into the agent's prompt. Keep it short —
+# the agent reads requirements/ and the service-prd unconditionally;
+# this is for ENGAGEMENT-SPECIFIC additions.
+required_reading:
+  - "requirements/*.md"
+  - "docs/prds/service-prd.md"
+  - "docs/prds/prd-*.md"
+  - "orchestration/gates/gates.json"
+  - "orchestration/ledgers/agent-class-registry.yaml"
+  # Uncomment if the engagement is a client surface:
+  # - "clients/designs/*/design.yaml"
+
+# Where the verdict lands. Path is fixed by the rule pack; this is for
+# Captain-loop bookkeeping.
+verdict_file: "orchestration/reviews/catalog-readiness-<TS>.md"
+
+# Findings of these severities block the Captain from declaring
+# verdict=ready. Set to ["critical","high"] for normal pre-flight; set
+# to ["critical"] only if you've decided high findings are deferrable
+# (rare; document why in the phase report).
+blocking_severities:
+  - critical
+  - high
+
+# Cycle cap. Phase 2 escalates if this catalog cycle exceeds the cap
+# without reaching `verdict: ready`. Default is 3.
+cycle_cap: 3
+
+# What "complete" looks like.
+exit_criterion: |
+  catalog-readiness-agent has issued `verdict: ready` and the Captain
+  has reviewed the narrative. The verdict file at
+  orchestration/reviews/catalog-readiness-<TS>.md exists and is
+  committed. Phase report at orchestration/reports/phase-2-pre-flight.md
+  written.
+
+# Always `local_subagent` — distinguishes this from `hub_mode` /
+# `headless` Scion workers. The Captain's loop dispatches via the
+# `Agent` tool, not via `scion create`.
+execution_mode: local_subagent
