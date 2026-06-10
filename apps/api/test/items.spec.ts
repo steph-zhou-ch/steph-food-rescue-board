@@ -408,3 +408,74 @@ describe('@req REQ-CAP-CLAIM-ITEM @criterion claim-04-not-found', () => {
     expect(res.status).not.toBe(500);
   });
 });
+
+async function del(id: string): Promise<request.Response> {
+  return request(app.getHttpServer()).delete(`/api/items/${id}`);
+}
+
+describe('@req REQ-CAP-REMOVE-LISTING @criterion remove-01-marks-removed', () => {
+  it('returns 200 with status removed and the item leaves the feed', async () => {
+    const id = await post(validBody({ title: 'to-remove' }));
+    const res = await del(id);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('removed');
+
+    const feed = await request(app.getHttpServer()).get('/api/items').expect(200);
+    const ids = feed.body.items.map((i: { id: string }) => i.id);
+    expect(ids).not.toContain(id);
+  });
+
+  it('does NOT physically delete the record (soft delete — still GET-able)', async () => {
+    const id = await post(validBody());
+    await del(id);
+    const detail = await request(app.getHttpServer())
+      .get(`/api/items/${id}`)
+      .expect(200);
+    expect(detail.body.status).toBe('removed');
+  });
+});
+
+describe('@req REQ-CAP-REMOVE-LISTING @criterion remove-02-any-status', () => {
+  it('removes an available item (200, removed)', async () => {
+    const id = await post(validBody());
+    const res = await del(id);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('removed');
+  });
+
+  it('removes a claimed item without 409 (poster can always remove)', async () => {
+    const id = await post(validBody());
+    await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    const res = await del(id);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('removed');
+  });
+
+  it('removes a picked_up item (200, removed)', async () => {
+    const id = await post(validBody());
+    await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    await patch(id, { action: 'confirm_pickup' });
+    const res = await del(id);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('removed');
+  });
+});
+
+describe('@req REQ-CAP-REMOVE-LISTING @criterion remove-03-not-found', () => {
+  it('returns 404 for DELETE on a non-existent id (not 200)', async () => {
+    const res = await del('00000000-0000-0000-0000-000000000000');
+    expect(res.status).toBe(404);
+    expect(res.status).not.toBe(200);
+  });
+});
+
+describe('@req REQ-CAP-REMOVE-LISTING @criterion remove-04-idempotent', () => {
+  it('double-remove returns 200 both times (idempotent, not 409)', async () => {
+    const id = await post(validBody());
+    const first = await del(id);
+    expect(first.status).toBe(200);
+    const second = await del(id);
+    expect(second.status).toBe(200);
+    expect(second.body.status).toBe('removed');
+  });
+});
