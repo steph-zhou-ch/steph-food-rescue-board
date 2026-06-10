@@ -116,3 +116,55 @@ describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-01-renders-available-
     expect(screen.queryByTestId('detail-row-expiresAt')).not.toBeInTheDocument();
   });
 });
+
+const CLAIMED_ITEM: SurplusItemWire = {
+  ...AVAILABLE_ITEM,
+  status: 'claimed',
+  claimedBy: 'Hope Shelter',
+};
+
+describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-02-renders-claimed-state @design rescue-board/item-detail-claimed', () => {
+  it('renders an orange CLAIMED badge instead of the green AVAILABLE badge', () => {
+    render(e(ItemDetail, { item: CLAIMED_ITEM }));
+    const status = screen.getByTestId('status-badge');
+    expect(status).toHaveTextContent('CLAIMED');
+    expect(status).not.toHaveTextContent('AVAILABLE');
+    expect(status).toHaveStyle({ backgroundColor: '#dc8226' });
+  });
+
+  it('shows a "Claimed by" row with the claimer name in the detail card', () => {
+    render(e(ItemDetail, { item: CLAIMED_ITEM }));
+    const card = screen.getByTestId('detail-card');
+    const row = within(card).getByTestId('detail-row-claimedBy');
+    expect(row).toHaveTextContent(/claimed by/i);
+    expect(within(card).getByTestId('detail-value-claimedBy')).toHaveTextContent(
+      'Hope Shelter',
+    );
+  });
+
+  it('renders "Mark as picked up" (dark, checkmark) and "Unclaim" (outlined, undo) buttons', () => {
+    render(e(ItemDetail, { item: CLAIMED_ITEM }));
+    const pickup = screen.getByTestId('btn-pickup');
+    expect(pickup).toHaveTextContent('Mark as picked up');
+    expect(within(pickup).getByTestId('icon-check')).toBeInTheDocument();
+    expect(pickup).toHaveStyle({ backgroundColor: '#0e0c21' });
+
+    const unclaim = screen.getByTestId('btn-unclaim');
+    expect(unclaim).toHaveTextContent('Unclaim');
+    expect(within(unclaim).getByTestId('icon-undo')).toBeInTheDocument();
+    // "outlined" = visible border, no solid fill (distinct from the dark
+    // primary "Mark as picked up").
+    expect(unclaim).toHaveStyle({ border: '1px solid #dfdbd2' });
+    expect(unclaim).not.toHaveStyle({ backgroundColor: '#0e0c21' });
+  });
+
+  it('does NOT show "Claim this item" on claimed items (negative case)', () => {
+    render(e(ItemDetail, { item: CLAIMED_ITEM }));
+    expect(screen.queryByTestId('btn-claim')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the claimed-by row on available items (negative case)', () => {
+    render(e(ItemDetail, { item: AVAILABLE_ITEM }));
+    expect(screen.queryByTestId('detail-row-claimedBy')).not.toBeInTheDocument();
+  });
+});
