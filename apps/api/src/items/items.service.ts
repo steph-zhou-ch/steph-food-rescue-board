@@ -1,7 +1,7 @@
 // REQ-CAP-* :: application service for surplus items. Bridges the
 // HTTP boundary and the pure application/domain layers:
-//   - generates ids (uuid) and reads "now" via the Clock port (never
-//     `new Date()` / `Date.now()` — forbidden by REQ-INV-TIMEZONE-DST)
+//   - generates ids (uuid) and reads "now" via the injected Clock
+//     port (never the wall clock directly — per REQ-INV-TIMEZONE-DST)
 //   - maps domain errors to HTTP status codes (404 / 409 / 400)
 //   - serializes domain entities to the wire shape (ISO-8601 Z dates)
 

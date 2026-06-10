@@ -2,7 +2,7 @@
 //
 // Pure domain entity + factory. No I/O, no framework, no clock read
 // (the caller supplies `now` and `id` so the domain stays
-// deterministic and `new Date()`/`Date.now()` never appear here).
+// deterministic and never reads the wall clock directly here).
 
 import type { ItemStatus } from './item-status.js';
 
