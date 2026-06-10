@@ -168,3 +168,79 @@ describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-02-renders-claimed-st
     expect(screen.queryByTestId('detail-row-claimedBy')).not.toBeInTheDocument();
   });
 });
+
+/** A fetch mock whose response resolution is controlled by the test, so
+ * we can observe the in-flight (pending) UI before the request settles. */
+function deferredFetch(responseBody: unknown): {
+  fetchMock: ReturnType<typeof vi.fn>;
+  resolve: () => void;
+  calls: () => Array<[string, RequestInit]>;
+} {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  const recorded: Array<[string, RequestInit]> = [];
+  const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+    recorded.push([url, init]);
+    await gate;
+    return {
+      ok: true,
+      json: async () => responseBody,
+    } as Response;
+  });
+  return { fetchMock, resolve: release, calls: () => recorded };
+}
+
+describe('@req REQ-CAP-FE-ITEM-DETAIL @criterion fe-detail-03-claim-action', () => {
+  it('sends PATCH .../status with action=claim and updates the view in place (no reload)', async () => {
+    const { fetchMock, resolve } = deferredFetch({
+      id: 'item-1',
+      status: 'claimed',
+      claimedBy: 'You',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const onBack = vi.fn();
+
+    render(e(ItemDetail, { item: AVAILABLE_ITEM, onBack }));
+    fireEvent.click(screen.getByTestId('btn-claim'));
+
+    // Request shape: PATCH to the status endpoint with action=claim.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/items/item-1/status');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body as string)).toMatchObject({ action: 'claim' });
+
+    resolve();
+
+    // View flips to claimed in place: orange badge + claimed-by row +
+    // new buttons. No navigation away.
+    await waitFor(() =>
+      expect(screen.getByTestId('status-badge')).toHaveTextContent('CLAIMED'),
+    );
+    expect(screen.getByTestId('detail-row-claimedBy')).toBeInTheDocument();
+    expect(screen.getByTestId('btn-pickup')).toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
+  it('disables the claim button while the request is in flight', async () => {
+    const { fetchMock, resolve } = deferredFetch({
+      id: 'item-1',
+      status: 'claimed',
+      claimedBy: 'You',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(e(ItemDetail, { item: AVAILABLE_ITEM }));
+    const claim = screen.getByTestId('btn-claim');
+    fireEvent.click(claim);
+
+    await waitFor(() => expect(claim).toBeDisabled());
+
+    resolve();
+    await waitFor(() =>
+      expect(screen.getByTestId('status-badge')).toHaveTextContent('CLAIMED'),
+    );
+  });
+});
