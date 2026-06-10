@@ -42,6 +42,7 @@
 
 ## Recent activity (manager-authored; newest first)
 
+- `2026-06-10T19:30:00Z` — w1-api-items progressing via strict TDD: 7 commits ahead of main (lifecycle-01/02, post-01/02/03, browse-01/02/03/04, get-item-01/02 passing). Pushing every pair as instructed. Remaining: claim-item, remove-listing. (manager)
 - `2026-06-10T19:19:30Z` — Dispatched w1-api-items: pointer-message sent (read composed prompt, checkout swarm/w1-api-items, push every TDD pair). Worker acknowledged and began reading brief — dispatch confirmed behaviorally. (manager)
 - `2026-06-10T19:19:10Z` — Spawned w1-api-items (application-services-agent, --harness claude, branch swarm/w1-api-items). Template uploaded to Hub (project scope, id b99b4f1c…) via --upload-template after discovering grove templates were not pre-imported. Trust dialog dismissed via --raw \r. (manager)
 - `2026-06-10T19:17:42Z` — Pushed [manager-ready] wave-1 marker to origin/main (f666cf0). Workspace populated as linked worktree on main. (manager)
