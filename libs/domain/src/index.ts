@@ -7,4 +7,28 @@
 //     libs/outbound-adapters.
 //   - Branded UUIDs for entity identity at type-level.
 //   - Closed-enum reason codes on every domain error.
-export {};
+
+export {
+  ITEM_STATUSES,
+  ITEM_ACTIONS,
+  isItemStatus,
+  transition,
+  TransitionError,
+} from './item-status.js';
+export type {
+  ItemStatus,
+  ItemAction,
+  TransitionErrorReason,
+} from './item-status.js';
+
+export {
+  ITEM_CATEGORIES,
+  createSurplusItem,
+  isItemCategory,
+} from './surplus-item.js';
+export type {
+  SurplusItem,
+  ItemCategory,
+  LatLng,
+  CreateItemAttrs,
+} from './surplus-item.js';
