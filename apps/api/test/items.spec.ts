@@ -48,6 +48,14 @@ function validBody(overrides: CreateBody = {}): Record<string, unknown> {
   };
 }
 
+async function post(body: Record<string, unknown>): Promise<string> {
+  const res = await request(app.getHttpServer())
+    .post('/api/items')
+    .send(body)
+    .expect(201);
+  return res.body.id as string;
+}
+
 beforeEach(async () => {
   app = await createApp();
 });
@@ -170,5 +178,70 @@ describe('@req REQ-CAP-POST-ITEM @criterion post-03-enforces-length-limits', () 
       .get(`/api/items/${created.body.id}`)
       .expect(200);
     expect(detail.body.title).toBe(exactly100);
+  });
+});
+
+describe('@req REQ-CAP-BROWSE-FEED @criterion browse-01-returns-available-only', () => {
+  it('returns only available items; claimed and removed do not appear', async () => {
+    const availableId = await post(validBody({ title: 'available-one' }));
+    const claimedId = await post(validBody({ title: 'claimed-one' }));
+    const removedId = await post(validBody({ title: 'removed-one' }));
+
+    await request(app.getHttpServer())
+      .patch(`/api/items/${claimedId}/status`)
+      .send({ action: 'claim', claimedBy: 'Lee' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .delete(`/api/items/${removedId}`)
+      .expect(200);
+
+    const feed = await request(app.getHttpServer())
+      .get('/api/items')
+      .expect(200);
+    const ids = feed.body.items.map((i: { id: string }) => i.id);
+
+    expect(ids).toContain(availableId);
+    expect(ids).not.toContain(claimedId);
+    expect(ids).not.toContain(removedId);
+    for (const item of feed.body.items) {
+      expect(item.status).toBe('available');
+    }
+  });
+});
+
+describe('@req REQ-CAP-BROWSE-FEED @criterion browse-03-category-filter', () => {
+  it('returns only items of the requested category', async () => {
+    const foodId = await post(validBody({ title: 'food-item', category: 'food' }));
+    const houseId = await post(
+      validBody({ title: 'house-item', category: 'household' }),
+    );
+
+    const res = await request(app.getHttpServer())
+      .get('/api/items?category=food')
+      .expect(200);
+    const ids = res.body.items.map((i: { id: string }) => i.id);
+    expect(ids).toContain(foodId);
+    expect(ids).not.toContain(houseId);
+    for (const item of res.body.items) {
+      expect(item.category).toBe('food');
+    }
+  });
+
+  it('omitting the category param returns all categories', async () => {
+    const foodId = await post(validBody({ category: 'food' }));
+    const houseId = await post(validBody({ category: 'household' }));
+    const otherId = await post(validBody({ category: 'other' }));
+
+    const res = await request(app.getHttpServer())
+      .get('/api/items')
+      .expect(200);
+    const ids = res.body.items.map((i: { id: string }) => i.id);
+    expect(ids).toEqual(expect.arrayContaining([foodId, houseId, otherId]));
+  });
+
+  it('an invalid category value returns 400, not empty results', async () => {
+    await request(app.getHttpServer())
+      .get('/api/items?category=bogus')
+      .expect(400);
   });
 });
