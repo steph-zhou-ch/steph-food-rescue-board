@@ -307,3 +307,104 @@ describe('@req REQ-CAP-GET-ITEM @criterion get-item-02-not-found', () => {
     expect(res.body).not.toBeNull();
   });
 });
+
+async function patch(
+  id: string,
+  body: Record<string, unknown>,
+): Promise<request.Response> {
+  return request(app.getHttpServer()).patch(`/api/items/${id}/status`).send(body);
+}
+
+describe('@req REQ-CAP-CLAIM-ITEM @criterion claim-01-available-to-claimed', () => {
+  it('claims an available item: 200, status claimed, claimedBy set', async () => {
+    const id = await post(validBody({ title: 'to-claim' }));
+    const res = await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('claimed');
+    expect(res.body.claimedBy).toBe('Lee');
+  });
+
+  it('claimed item no longer appears in the feed', async () => {
+    const id = await post(validBody({ title: 'disappears' }));
+    await patch(id, { action: 'claim', claimedBy: 'Lee' }).then((r) =>
+      expect(r.status).toBe(200),
+    );
+    const feed = await request(app.getHttpServer()).get('/api/items').expect(200);
+    const ids = feed.body.items.map((i: { id: string }) => i.id);
+    expect(ids).not.toContain(id);
+  });
+
+  it('does NOT allow claiming an already-claimed item (409)', async () => {
+    const id = await post(validBody());
+    await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    const res = await patch(id, { action: 'claim', claimedBy: 'Other' });
+    expect(res.status).toBe(409);
+  });
+
+  it('does NOT allow claim without claimedBy (400)', async () => {
+    const id = await post(validBody());
+    const res = await patch(id, { action: 'claim' });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('@req REQ-CAP-CLAIM-ITEM @criterion claim-02-claimed-to-picked-up', () => {
+  it('confirms pickup on a claimed item: 200, status picked_up', async () => {
+    const id = await post(validBody());
+    await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    const res = await patch(id, { action: 'confirm_pickup' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('picked_up');
+  });
+
+  it('does NOT allow confirm_pickup on an available item (409)', async () => {
+    const id = await post(validBody());
+    const res = await patch(id, { action: 'confirm_pickup' });
+    expect(res.status).toBe(409);
+  });
+
+  it('does NOT allow confirm_pickup on a picked_up item (409)', async () => {
+    const id = await post(validBody());
+    await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    await patch(id, { action: 'confirm_pickup' });
+    const res = await patch(id, { action: 'confirm_pickup' });
+    expect(res.status).toBe(409);
+  });
+});
+
+describe('@req REQ-CAP-CLAIM-ITEM @criterion claim-03-unclaim-returns-to-available', () => {
+  it('unclaims a claimed item: 200, status available, claimedBy null', async () => {
+    const id = await post(validBody());
+    await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    const res = await patch(id, { action: 'unclaim' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('available');
+    expect(res.body.claimedBy).toBeNull();
+  });
+
+  it('unclaimed item reappears in the browse feed', async () => {
+    const id = await post(validBody({ title: 'reappears' }));
+    await patch(id, { action: 'claim', claimedBy: 'Lee' });
+    await patch(id, { action: 'unclaim' });
+    const feed = await request(app.getHttpServer()).get('/api/items').expect(200);
+    const ids = feed.body.items.map((i: { id: string }) => i.id);
+    expect(ids).toContain(id);
+  });
+
+  it('does NOT allow unclaim on an available item (409)', async () => {
+    const id = await post(validBody());
+    const res = await patch(id, { action: 'unclaim' });
+    expect(res.status).toBe(409);
+  });
+});
+
+describe('@req REQ-CAP-CLAIM-ITEM @criterion claim-04-not-found', () => {
+  it('returns 404 for PATCH on a non-existent id (not 500)', async () => {
+    const res = await patch('00000000-0000-0000-0000-000000000000', {
+      action: 'claim',
+      claimedBy: 'Lee',
+    });
+    expect(res.status).toBe(404);
+    expect(res.status).not.toBe(500);
+  });
+});
