@@ -72,6 +72,22 @@ const helperStyle: CSSProperties = {
   color: '#6d675e',
 };
 
+const optionalStyle: CSSProperties = {
+  fontFamily: 'Inter, sans-serif',
+  fontSize: '13px',
+  fontWeight: 400,
+  color: '#6d675e',
+};
+
+// Red asterisk marking a required field (text-danger token #b5292b).
+function RequiredMarker() {
+  return (
+    <span data-testid="required-marker" aria-hidden="true" style={{ color: '#b5292b', marginLeft: '2px' }}>
+      *
+    </span>
+  );
+}
+
 const submitStyle: CSSProperties = {
   width: '100%',
   borderRadius: '9999px',
@@ -104,7 +120,9 @@ export function PostItem(_props: PostItemProps) {
 
       <form>
         <Field name="photo">
-          <span style={labelStyle}>Photo (optional)</span>
+          <span style={labelStyle}>
+            Photo <span style={optionalStyle}>(optional)</span>
+          </span>
           <PhotoUpload />
         </Field>
 
@@ -112,6 +130,7 @@ export function PostItem(_props: PostItemProps) {
           <div style={labelRowStyle}>
             <label htmlFor="title" style={labelStyle}>
               Title
+              <RequiredMarker />
             </label>
             <CharacterCounter count={title.length} max={TITLE_MAX} testId="counter-title" />
           </div>
@@ -127,6 +146,7 @@ export function PostItem(_props: PostItemProps) {
           <div style={labelRowStyle}>
             <label htmlFor="description" style={labelStyle}>
               Description
+              <RequiredMarker />
             </label>
             <CharacterCounter
               count={description.length}
@@ -144,13 +164,17 @@ export function PostItem(_props: PostItemProps) {
         </Field>
 
         <Field name="category">
-          <span style={labelStyle}>Category</span>
+          <span style={labelStyle}>
+            Category
+            <RequiredMarker />
+          </span>
           <CategoryPicker value={category} onChange={setCategory} />
         </Field>
 
         <Field name="pickupLocation">
           <label htmlFor="pickupLocation" style={labelStyle}>
             Pickup Location
+            <RequiredMarker />
           </label>
           <input
             id="pickupLocation"
@@ -162,7 +186,7 @@ export function PostItem(_props: PostItemProps) {
 
         <Field name="expiresAt">
           <label htmlFor="expiresAt" style={labelStyle}>
-            Expires (optional)
+            Expires <span style={optionalStyle}>(optional)</span>
           </label>
           <input
             id="expiresAt"
@@ -177,6 +201,7 @@ export function PostItem(_props: PostItemProps) {
         <Field name="postedBy">
           <label htmlFor="postedBy" style={labelStyle}>
             Your Name / Organization
+            <RequiredMarker />
           </label>
           <input
             id="postedBy"
