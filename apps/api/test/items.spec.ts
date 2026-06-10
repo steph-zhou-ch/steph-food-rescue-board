@@ -245,3 +245,65 @@ describe('@req REQ-CAP-BROWSE-FEED @criterion browse-03-category-filter', () => 
       .expect(400);
   });
 });
+
+describe('@req REQ-CAP-GET-ITEM @criterion get-item-01-returns-full-record', () => {
+  it('returns 200 with the complete record for an available item', async () => {
+    const id = await post(
+      validBody({
+        title: 'full-record',
+        photoUrl: 'https://example.com/p.jpg',
+        pickupLatLng: { lat: 40.7, lng: -74 },
+        expiresAt: '2026-12-31T00:00:00.000Z',
+      }),
+    );
+    const res = await request(app.getHttpServer())
+      .get(`/api/items/${id}`)
+      .expect(200);
+    expect(res.body).toMatchObject({
+      id,
+      title: 'full-record',
+      description: expect.any(String),
+      photoUrl: 'https://example.com/p.jpg',
+      category: 'food',
+      pickupLocation: '5th Ave bakery',
+      pickupLatLng: { lat: 40.7, lng: -74 },
+      postedBy: 'Sam',
+      status: 'available',
+      claimedBy: null,
+      expiresAt: '2026-12-31T00:00:00.000Z',
+    });
+    expect(typeof res.body.createdAt).toBe('string');
+  });
+
+  it('returns claimed and removed items too (detail page shows all states)', async () => {
+    const claimedId = await post(validBody({ title: 'claimed-detail' }));
+    await request(app.getHttpServer())
+      .patch(`/api/items/${claimedId}/status`)
+      .send({ action: 'claim', claimedBy: 'Lee' })
+      .expect(200);
+    const claimedRes = await request(app.getHttpServer())
+      .get(`/api/items/${claimedId}`)
+      .expect(200);
+    expect(claimedRes.body.status).toBe('claimed');
+    expect(claimedRes.body.claimedBy).toBe('Lee');
+
+    const removedId = await post(validBody({ title: 'removed-detail' }));
+    await request(app.getHttpServer())
+      .delete(`/api/items/${removedId}`)
+      .expect(200);
+    const removedRes = await request(app.getHttpServer())
+      .get(`/api/items/${removedId}`)
+      .expect(200);
+    expect(removedRes.body.status).toBe('removed');
+  });
+});
+
+describe('@req REQ-CAP-GET-ITEM @criterion get-item-02-not-found', () => {
+  it('returns 404 for a non-existent id (not 500, not 200 with null)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/items/00000000-0000-0000-0000-000000000000')
+      .expect(404);
+    expect(res.status).not.toBe(500);
+    expect(res.body).not.toBeNull();
+  });
+});
