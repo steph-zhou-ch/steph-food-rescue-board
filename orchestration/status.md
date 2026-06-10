@@ -1,17 +1,17 @@
 # Engagement status board
 
-> Last update: `2026-06-10T21:58:00Z` by `manager`
-> Phase: `5` · Wave: `1` · Batch: `2 (all 3 FE running + dispatched) · audit-api approved`
-> Current state: `batch-2 FE tracks all started & dispatched after grove-scope auth fix; polling for [complete:<fe-track>]`
+> Last update: `2026-06-10T23:04:00Z` by `manager`
+> Phase: `5` · Wave: `1` · Batch: `2 (2/3 FE complete: post-form + item-detail) · audit-api approved`
+> Current state: `manager reloaded after harness restart. post-form + item-detail [complete] on origin. browse-feed container had Exited(0) at 7 commits — RESUMED + re-dispatched resume pointer 23:04Z. Polling origin/swarm/w1-fe-browse-feed for [complete].`
 
 ## Active tracks
 
 | Track id | Agent class | Branch | Status | Predecessors | Notes |
 |---|---|---|---|---|---|
 | `w1-api-items` | `application-services-agent` | `swarm/w1-api-items` | `complete` | — | Batch 1. `[complete:w1-api-items]` at 76ccf82. All 6 REQ areas passing (lifecycle/post/browse/get-item/claim/remove). |
-| `w1-fe-browse-feed` | `foundations-agent` | `swarm/w1-fe-browse-feed` | `running` | `w1-api-items` | Batch 2. Browse feed page. Started + dispatched 21:58Z (fresh, work-in-place). |
-| `w1-fe-item-detail` | `foundations-agent` | `swarm/w1-fe-item-detail` | `running` | `w1-api-items` | Batch 2. Item detail + status actions. Started + dispatched 21:58Z (fresh). |
-| `w1-fe-post-form` | `foundations-agent` | `swarm/w1-fe-post-form` | `running` | `w1-api-items` | Batch 2. Post-item form. RESUMED on existing branch (2 commits) + dispatched 21:58Z; agent record recreated after 404. |
+| `w1-fe-browse-feed` | `foundations-agent` | `swarm/w1-fe-browse-feed` | `running` | `w1-api-items` | Batch 2. Browse feed page. **Slowest track.** Container Exited(0) at 7 commits (tip: fe-feed-01 failing). RESUMED + re-dispatched resume pointer 23:04Z (continue on branch, push every pair). |
+| `w1-fe-item-detail` | `foundations-agent` | `swarm/w1-fe-item-detail` | `complete` | `w1-api-items` | Batch 2. **`[complete:w1-fe-item-detail]` @ c869a54.** All 6 criteria (fe-detail-01..06) tagged; 23/23 apps/web tests pass; full-repo typecheck+test green. fe-detail-04/05/06 impl pre-landed in a7b1663. |
+| `w1-fe-post-form` | `foundations-agent` | `swarm/w1-fe-post-form` | `complete` | `w1-api-items` | Batch 2. **`[complete:w1-fe-post-form]` @ b3f5860.** All 5 criteria (fe-post-01..05) tagged passing; typecheck+test green. |
 | `w1-audit-api` | `spec-adherence-agent` | `swarm/w1-audit-api` | `approved` | `w1-api-items` | Batch 3. **APPROVED 19/19** @ 1eb0aa8 (2026-06-10T20:30Z). 2 non-blocking notes (tdd-hygiene, browse-02 boundary). API track cleared for merge. |
 | `w1-audit-fe` | `spec-adherence-agent` | `swarm/w1-audit-fe` | `pending` | `w1-fe-browse-feed`, `w1-fe-item-detail`, `w1-fe-post-form` | Batch 3. Spec-adherence audit of the FE tracks. |
 
