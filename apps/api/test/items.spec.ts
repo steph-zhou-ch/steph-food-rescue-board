@@ -93,3 +93,82 @@ describe('@req REQ-CAP-POST-ITEM @criterion post-01-creates-available-item', () 
     expect(res.body.status).toBe('available');
   });
 });
+
+describe('@req REQ-CAP-POST-ITEM @criterion post-02-validates-required-fields', () => {
+  const required = [
+    'title',
+    'description',
+    'category',
+    'pickupLocation',
+    'postedBy',
+  ] as const;
+
+  for (const field of required) {
+    it(`returns 400 naming the missing field when ${field} is absent`, async () => {
+      const body = validBody();
+      delete (body as Record<string, unknown>)[field];
+      const res = await request(app.getHttpServer())
+        .post('/api/items')
+        .send(body)
+        .expect(400);
+      expect(JSON.stringify(res.body)).toContain(field);
+    });
+  }
+
+  it('does NOT return 201 when a required field is missing', async () => {
+    await request(app.getHttpServer())
+      .post('/api/items')
+      .send(validBody({ title: undefined }))
+      .expect(400);
+  });
+
+  it('does NOT return 500 for a validation error (pre-storage)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/items')
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.status).not.toBe(500);
+  });
+});
+
+describe('@req REQ-CAP-POST-ITEM @criterion post-03-enforces-length-limits', () => {
+  it('rejects title > 100 chars with 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/items')
+      .send(validBody({ title: 'x'.repeat(101) }))
+      .expect(400);
+  });
+
+  it('rejects description > 500 chars with 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/items')
+      .send(validBody({ description: 'x'.repeat(501) }))
+      .expect(400);
+  });
+
+  it('rejects pickupLocation > 200 chars with 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/items')
+      .send(validBody({ pickupLocation: 'x'.repeat(201) }))
+      .expect(400);
+  });
+
+  it('rejects postedBy > 50 chars with 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/items')
+      .send(validBody({ postedBy: 'x'.repeat(51) }))
+      .expect(400);
+  });
+
+  it('does NOT silently truncate — a max-length title is accepted intact', async () => {
+    const exactly100 = 'x'.repeat(100);
+    const created = await request(app.getHttpServer())
+      .post('/api/items')
+      .send(validBody({ title: exactly100 }))
+      .expect(201);
+    const detail = await request(app.getHttpServer())
+      .get(`/api/items/${created.body.id}`)
+      .expect(200);
+    expect(detail.body.title).toBe(exactly100);
+  });
+});
